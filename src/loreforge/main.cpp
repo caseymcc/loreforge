@@ -1,14 +1,96 @@
 #include "crow.h"
 #include <tree_sitter/api.h>
+#include <faiss/Index.h>
 #include <faiss/IndexFlat.h>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <sstream>
+#include <string>
 
-// Forward declaration of the C++ grammar
+// Forward declaration of the C++ and Python grammars
 extern "C" TSLanguage *tree_sitter_cpp();
+extern "C" TSLanguage *tree_sitter_python();
 
-int main()
+void parse_and_print_definitions(const std::string& code, TSLanguage* language) {
+    TSParser *parser = ts_parser_new();
+    ts_parser_set_language(parser, language);
+
+    TSTree *tree = ts_parser_parse_string(
+        parser,
+        NULL,
+        code.c_str(),
+        code.length()
+    );
+
+    TSNode root_node = ts_tree_root_node(tree);
+    TSQuery *query;
+    uint32_t error_offset;
+    TSQueryError error_type;
+
+    if (language == tree_sitter_cpp()) {
+        const char* cpp_query_string = "[(function_definition) @function (class_specifier name: (type_identifier) @class)]";
+        query = ts_query_new(
+            language,
+            cpp_query_string,
+            strlen(cpp_query_string),
+            &error_offset,
+            &error_type
+        );
+    } else {
+        const char* python_query_string = "[(function_definition name: (identifier) @function) (class_definition name: (identifier) @class)]";
+        query = ts_query_new(
+            language,
+            python_query_string,
+            strlen(python_query_string),
+            &error_offset,
+            &error_type
+        );
+    }
+
+    TSQueryCursor *cursor = ts_query_cursor_new();
+    ts_query_cursor_exec(cursor, query, root_node);
+
+    TSQueryMatch match;
+    while (ts_query_cursor_next_match(cursor, &match)) {
+        for (uint32_t i = 0; i < match.capture_count; ++i) {
+            TSNode captured_node = match.captures[i].node;
+            uint32_t length = ts_node_end_byte(captured_node) - ts_node_start_byte(captured_node);
+            std::string name(code.substr(ts_node_start_byte(captured_node), length));
+            std::cout << name << std::endl;
+        }
+    }
+
+    ts_query_cursor_delete(cursor);
+    ts_query_delete(query);
+    ts_tree_delete(tree);
+    ts_parser_delete(parser);
+}
+
+int main(int argc, char* argv[])
 {
+    if (argc > 1) {
+        std::string filepath = argv[1];
+        std::ifstream file(filepath);
+        if (!file) {
+            std::cerr << "Error opening file: " << filepath << std::endl;
+            return 1;
+        }
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string code = buffer.str();
+
+        if (filepath.rfind(".cpp") != std::string::npos) {
+            parse_and_print_definitions(code, tree_sitter_cpp());
+        } else if (filepath.rfind(".py") != std::string::npos) {
+            parse_and_print_definitions(code, tree_sitter_python());
+        } else {
+            std::cerr << "Unsupported file type: " << filepath << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
     crow::SimpleApp app;
 
     // --- Faiss Index Setup ---
@@ -90,7 +172,7 @@ int main()
             }
 
             int k = 5; // Number of nearest neighbors to search for
-            std::vector<faiss::idx_t> labels(k);
+            std::vector<faiss::Index::idx_t> labels(k);
             std::vector<float> distances(k);
 
             index.search(1, query_embedding.data(), k, distances.data(), labels.data());
