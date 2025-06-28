@@ -21,14 +21,14 @@ std::string exec(const char* cmd) {
 }
 
 TEST(LoreForgeTest, CppFile) {
-    std::string output = exec("./build/loreforge tests/cpp_test_files/sample.cpp");
+    std::string output = exec("./loreforge ../../tests/cpp_test_files/sample.cpp");
     ASSERT_NE(output.find("MyClass"), std::string::npos);
     ASSERT_NE(output.find("myMethod"), std::string::npos);
     ASSERT_NE(output.find("myFunction"), std::string::npos);
 }
 
 TEST(LoreForgeTest, PythonFile) {
-    std::string output = exec("./build/loreforge tests/python_test_files/sample.py");
+    std::string output = exec("./loreforge ../../tests/python_test_files/sample.py");
     ASSERT_NE(output.find("MyClass"), std::string::npos);
     ASSERT_NE(output.find("my_method"), std::string::npos);
     ASSERT_NE(output.find("my_function"), std::string::npos);

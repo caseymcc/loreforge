@@ -59,7 +59,7 @@ A phased approach to development using a C++ toolchain:
 - [x] Initialize a C++ project using CMake and set up vcpkg for dependency management.
 - [x] Set up a basic server with a health check endpoint using Crow.
 - [x] Integrate the tree-sitter library (C++ API) and build parsers for an initial target language (e.g., C++ or Python).
-- [ ] Create a C++ application that can take a file path, parse it, and print out a list of all function/class names.
+- [x] Create a C++ application that can take a file path, parse it, and print out a list of all function/class names.
   - [ ] Provide basic tests for a small c++ and python repo
 
 ### Phase 2: Embeddings & Vector Storage

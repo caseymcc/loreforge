@@ -19,6 +19,7 @@ set(loreforge_source
 add_executable(loreforge
     ${loreforge_source}
 )
+set_target_properties(loreforge PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 target_include_directories(loreforge PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
