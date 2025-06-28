@@ -1,0 +1,17 @@
+{
+  "name": "loreforge",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "crow",
+    {
+      "name": "openblas",
+      "version>=": "0.3.29",
+      "features": ["dynamic-arch", "threads"]
+    },
+    "faiss",
+    {
+      "name": "tree-sitter",
+      "features": ["c", "cpp", "csharp", "css", "go", "html", "java", "javascript", "json", "php", "python", "ruby", "rust", "toml", "typescript", "yaml"]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+--- a/kernel/x86_64/KERNEL.SKYLAKEX
++++ b/kernel/x86_64/KERNEL.SKYLAKEX
+@@ -1,5 +1,7 @@
+ include $(KERNELDIR)/KERNEL.HASWELL
+ 
++ifndef DYNAMIC_ARCH
+ SGEMMKERNEL    =  sgemm_kernel_16x4_skylakex_3.c
++endif
+ STRMMKERNEL    =  sgemm_kernel_16x4_skylakex_2.c
+ SGEMMINCOPY    =  ../generic/gemm_ncopy_16.c
+ SGEMMITCOPY    =  sgemm_tcopy_16_skylakex.c
