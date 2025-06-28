@@ -1,5 +1,6 @@
 #include "crow.h"
 #include <tree_sitter/api.h>
+#include <faiss/Index.h>
 #include <faiss/IndexFlat.h>
 #include <iostream>
 #include <vector>
@@ -90,7 +91,7 @@ int main()
             }
 
             int k = 5; // Number of nearest neighbors to search for
-            std::vector<faiss::idx_t> labels(k);
+            std::vector<faiss::Index::idx_t> labels(k);
             std::vector<float> distances(k);
 
             index.search(1, query_embedding.data(), k, distances.data(), labels.data());
