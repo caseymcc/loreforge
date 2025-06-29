@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package loreforge;
+
+// The LoreForge service definition.
+service LoreForge {
+  // Sends a health check request.
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {}
+
+  // Parses a file and returns its structure.
+  rpc ParseFile (ParseFileRequest) returns (ParseFileResponse) {}
+}
+
+// The request message for the HealthCheck RPC.
+message HealthCheckRequest {
+}
+
+// The response message for the HealthCheck RPC.
+message HealthCheckResponse {
+  string status = 1;
+}
+
+// The request message for the ParseFile RPC.
+message ParseFileRequest {
+  string file_path = 1;
+  string content = 2;
+}
+
+// The response message for the ParseFile RPC.
+message ParseFileResponse {
+  // This will be expanded later to include the parsed file structure.
+  bool success = 1;
+}

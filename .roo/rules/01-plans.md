@@ -1,0 +1,1 @@
+Once a task or phase is completed in a plan or roadmap, pause for the user to look over the changes and request additional changes before moving to the next task/phase.

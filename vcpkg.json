@@ -13,6 +13,8 @@
       "name": "tree-sitter",
       "features": ["c", "cpp", "csharp", "css", "go", "html", "java", "javascript", "json", "php", "python", "ruby", "rust", "toml", "typescript", "yaml"]
     },
-    "gtest"
+    "gtest",
+    "grpc",
+    "protobuf"
   ]
 }
