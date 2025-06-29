@@ -90,10 +90,10 @@ This phase focuses on establishing the fundamental C++ parsing capabilities and 
   - [x] **Integrate gRPC library using vcpkg**: Ensure gRPC and Protocol Buffers are correctly configured as project dependencies.
   - [x] **Define initial gRPC service in `.proto` file**: Start with basic RPCs like `HealthCheck` and `ParseFile`.
   - [x] **Implement a basic gRPC server**: Set up a server that can listen for incoming requests and respond to the `HealthCheck` RPC.
-  - [ ] Integrate the **tree-sitter** library (C++ API) and build parsers for an initial target language (e.g., C++ or Python).
-  - [ ] Create a C++ application (or extend the gRPC server's internal logic) that can take a file path, parse it using tree-sitter, and print out a list of all function/class names.
-  - [ ] Provide basic tests for a small C++ and Python repo to validate parsing and basic structure extraction.
-  - [ ] Implement a basic gRPC client to interact with the `HealthCheck` and `ParseFile` RPCs.
+  - [x] Integrate the **tree-sitter** library (C++ API) and build parsers for an initial target language (e.g., C++ or Python).
+  - [x] Create a C++ application (or extend the gRPC server's internal logic) that can take a file path, parse it using tree-sitter, and print out a list of all function/class names.
+  - [x] Provide basic tests for a small C++ and Python repo to validate parsing and basic structure extraction.
+  - [x] Implement a basic gRPC client to interact with the `HealthCheck` and `ParseFile` RPCs.
 
 -----
 
