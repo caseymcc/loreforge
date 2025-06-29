@@ -71,7 +71,6 @@ class LoreForgeServiceImpl final : public LoreForge::Service {
         ts_parser_delete(parser);
 
         return Status::OK;
-        return Status::OK;
     }
 };
 
