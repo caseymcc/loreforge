@@ -27,7 +27,6 @@ class LoreForgeServiceImpl final : public LoreForge::Service {
 
     Status ParseFile(ServerContext* context, const ParseFileRequest* request,
                      ParseFileResponse* response) override {
-        // Placeholder logic
         std::cout << "Received ParseFile request for: " << request->file_path() << std::endl;
         response->set_success(true);
         return Status::OK;

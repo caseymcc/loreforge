@@ -1,21 +1,24 @@
-**Build Environment:** The entire build environment for `LoreForge` is managed within a Docker container.
+### **Build Environment:** 
+All `LoreForge` build, execution, debugging, and testing occurs within a Docker container located at the project root, `Dockerfile`.
 
-  * The Docker image definition is located in the `Dockerfile`.
-  * A helper script, `runDocker.sh`, is provided to manage the Docker container lifecycle (build, start, stop, restart, attach).
-  * Before running `runDocker.sh`, you should check if the docker `loreforge-dev-container` is already running.
-  * All build-related commands (e.g., CMake configuration, compilation) should be executed *inside* the running Docker container.
-  * All execution, debugging, and testing of the application should be executed *inside* the running Docker container.
-  * The `build.sh` script automates CMake configuration and Ninja compilation steps, and **should also be run inside the Docker container.**
-  * `runDocker.sh`/`build.sh` should be called in separete calls as they can not run together.
-  * **To start/manage the Docker build environment, execute `runDocker.sh [options]` from the project root.** Common commands include:
-      * `runDocker.sh`: Starts the container if it exists, or creates it if not, and then attaches.
-      * `runDocker.sh`: Starts the container if it exists, or creates it if not, and then attaches.
-      * `runDocker.sh --stop`: Stops and removes the container.
-      * `runDocker.sh --restart`: Restarts an existing container and attaches.
-      * `runDocker.sh --rebuild`: Builds the Docker image and starts/restarts the container.
-  * **Rebuilds of the Docker image (`docker build`) should only occur when changes are made to the `Dockerfile` or its direct dependencies.** Otherwise, simply starting or restarting the container is sufficient.
-  * **To build execute `build.sh [options]` from inside the running docker in the project root.** Common commands include:
-      * `build.sh`: will build the application
-      * `build.sh --rebuild`: cleans the build and then builds the application
-      * `build.sh --rebuild-cmake`: clean cmake build directory and re-runs cmake and build
+  * ### Managing the Docker Container
+    The runDocker.sh script, located in the project root, manages the Docker container lifecycle.
+
+    * `runDocker.sh [command]`: Starts (or creates and starts) the container. If already running, it attaches. If `[command]` are provided, they are executed within the running container via docker exec.
+    * `runDocker.sh --stop`: Stops and removes the container.
+    * `runDocker.sh --restart`: Restarts an existing container and attaches.
+    * `runDocker.sh --rebuild`: Rebuilds the Docker image and then starts/restarts the container. Only use --rebuild if Dockerfile or its dependencies change.
+  * ### Building the Application
+    Execute build.sh inside the running Docker container from the project root.
+    * `build.sh`: Builds the application.
+    * `build.sh --rebuild`: Cleans and then builds the application.
+    * `build.sh --rebuild-cmake`: Cleans CMake build directory, re-runs CMake, and then builds.
+  * ### Running the LoreForge Server
+    The runServer.sh script, located in the project root, manages the LoreForge gRPC server. `runServer.sh [options] [command]`
+    * `runServer.sh` or `runServer.sh start`: Starts the server.
+    * `runServer.sh stop`: Stops the server.
+    * `runServer.sh --os <os>`: Sets the OS (default: linux).
+    * `runServer.sh --arch <arch>`: Sets the architecture (default: x64).
+    * `runServer.sh --build <type>`: Sets the build type (default: debug).
+  * The application binary is located at `build/${OS}_${ARCH}_${BUILD_TYPE}` within the container.
   
