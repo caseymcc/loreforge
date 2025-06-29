@@ -83,4 +83,3 @@ target_link_libraries(loreforge_tests PRIVATE
     protobuf::libprotobuf)
 
 include(GoogleTest)
-gtest_discover_tests(loreforge_tests)

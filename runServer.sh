@@ -26,24 +26,10 @@ usage() {
 
 # Function to stop the server process
 stop_server() {
-    if [ -f "$PID_FILE" ]; then
-        PID=$(cat "$PID_FILE")
-        if ps -p "$PID" > /dev/null; then
-            echo "Stopping server with PID: $PID..."
-            kill "$PID"
-            sleep 1
-            if ps -p "$PID" > /dev/null; then
-                echo "Server did not stop gracefully, killing..."
-                kill -9 "$PID"
-            fi
-            echo "Server stopped."
-        else
-            echo "PID file found, but no process with PID $PID is running. Removing stale PID file."
-        fi
-        rm -f "$PID_FILE"
-    else
-        echo "Server is not running."
-    fi
+    echo "Stopping all loreforge server processes..."
+    pkill -f loreforge
+    rm -f "$PID_FILE"
+    echo "Server processes stopped."
 }
 
 # Function to start the server process
