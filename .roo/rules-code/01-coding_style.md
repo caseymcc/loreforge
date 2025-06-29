@@ -1,0 +1,39 @@
+Rules for formatting C/C++:
+- Braces:
+  - Open (namespaces, fns, ctrl): new line.
+  - Open (struct/class def H): same line.
+  - Inline empty ctor (H): {} same line.
+  - Close: own new line.
+- #include "" local files, <> for lib
+- Indent: 4sp; namespaces, types, fns, ctrl blks, ctor init lists.
+- Spaces:
+  - No: =, ::, :, (unary)!, (deref)*, (arith)+/-, between keyword/function and ().
+  - Yes: (compare)!=/>=, (logical)&&/||/....
+- Commas: after, not before.
+- Semicolons: not before.
+- No: keyword/fn_name ( params ).
+- No: inside ()/<>, unless empty.
+- Ctor Init: : after ctor().
+- Blank Lines: btwn methods; sep. logical blks in methods.
+- Naming:
+  - Types: PascalCase.
+  - Fns/Methods: camelCase.
+  - Class Members: m_camelCase.
+  - Struct/Local Vars: camelCase.
+  - Macros: UPPER_CASE_UNDERSCORED.
+- Pointers/Refs: type *var / type &var.
+- Preprocessor: #ifdef/#endif unindented; content indented; #endif//COMMENT ok.
+- Comments: minimize; // single-line; after stmt ok; dont use when code is obvious.
+- No try/catch if error code usable.
+- Min auto use.
+- Var Decls: top of scope/before ctrl flow; blank line after grp; ctrl flow ends grp.
+- Long Fn Sigs: wrap params to new lines, indent 1 lvl; ) after last param.
+- Header Guard: _PROJECT_FILENAME_EXT_, no pragma once
+- namespace:
+  - avoid using directive
+  - prefer explict qualification
+  - allow namespace aliases for brevity
+
+Rules for File names:
+- camelCase file name
+- .h/.cpp and .inl

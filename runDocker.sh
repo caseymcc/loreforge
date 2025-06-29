@@ -6,15 +6,27 @@ CONTAINER_NAME="loreforge-dev-container"
 REBUILD=false
 STOP=false
 RESTART=false
+COMMAND_ARGS=()
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --rebuild) REBUILD=true ;;
-        --stop) STOP=true ;;
-        --restart) RESTART=true ;;
-        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+        --rebuild)
+            REBUILD=true
+            shift
+            ;;
+        --stop)
+            STOP=true
+            shift
+            ;;
+        --restart)
+            RESTART=true
+            shift
+            ;;
+        *)
+            COMMAND_ARGS=("$@")
+            break
+            ;;
     esac
-    shift
 done
 
 if [ "$STOP" = true ] ; then
@@ -42,11 +54,10 @@ if [ "$RESTART" = true ] ; then
     if [ "$(docker ps -a -q -f name=$CONTAINER_NAME)" ]; then
         echo "Restarting container..."
         docker restart $CONTAINER_NAME
-        docker exec -it $CONTAINER_NAME /bin/bash
     else
         echo "Container not running. Use --rebuild to create it."
+        exit 1
     fi
-    exit 0
 fi
 
 if [ ! "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
@@ -59,5 +70,9 @@ if [ ! "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
     fi
 fi
 
-echo "Attaching to container..."
-docker exec -it $CONTAINER_NAME /bin/bash
+if [ ${#COMMAND_ARGS[@]} -gt 0 ]; then
+    docker exec -i "$CONTAINER_NAME" /bin/bash -c "${COMMAND_ARGS[*]}"
+else
+    echo "Attaching to container..."
+    docker exec -it "$CONTAINER_NAME" /bin/bash
+fi

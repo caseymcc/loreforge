@@ -78,6 +78,12 @@ done
 # --- Set up build directory and paths ---
 BUILD_DIR="build/${OS}_${ARCH}_${BUILD_TYPE}"
 
+# --- Stop server if running ---
+if [ -f "/tmp/loreforge.pid" ]; then
+    echo "--- Stopping running server before build ---"
+    ./runServer.sh stop --os "$OS" --arch "$ARCH" --build "$BUILD_TYPE"
+fi
+
 # --- Handle CMake rebuild ---
 if [ "$REBUILD_CMAKE" = true ]; then
     echo "--- Rebuilding CMake configuration ---"
