@@ -1,0 +1,3 @@
+[submodule "hermesaxiom"]
+	path = src/hermesaxiom
+	url = git@github.com:caseymcc/hermesaxiom.git

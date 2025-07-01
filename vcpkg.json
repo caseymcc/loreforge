@@ -8,6 +8,11 @@
       "version>=": "0.3.29",
       "features": ["dynamic-arch", "threads"]
     },
+    "cpr",
+    "nlohmann-json",
+    "llama-cpp",
+    "spdlog",
+    "picosha2",
     "faiss",
     {
       "name": "tree-sitter",

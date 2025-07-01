@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(LoreForge LANGUAGES CXX)
 
+add_subdirectory(src/hermesaxiom)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -12,8 +14,6 @@ find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(protobuf REQUIRED)
 find_package(gRPC REQUIRED)
-
-
 
 set(LOREFORGE_PROTO_FILES ${CMAKE_CURRENT_SOURCE_DIR}/protos/loreforge.proto)
 
@@ -29,6 +29,7 @@ target_link_libraries(loreforge_grpc_obj PUBLIC protobuf::libprotobuf)
 
 add_executable(loreforge
     src/loreforge/main.cpp
+    src/loreforge/loreforge_service.cpp
     $<TARGET_OBJECTS:loreforge_grpc_obj>
 )
 set_target_properties(loreforge PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -47,6 +48,7 @@ target_link_libraries(loreforge PRIVATE
     ${BLAS_LIBRARIES}
     gRPC::grpc++
     protobuf::libprotobuf
+    hermesaxiom
 )
 
 enable_testing()

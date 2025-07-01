@@ -9,6 +9,9 @@ service LoreForge {
 
   // Parses a file and returns its structure.
   rpc ParseFile (ParseFileRequest) returns (ParseFileResponse) {}
+
+  // Queries the codebase.
+  rpc QueryCodebase(QueryRequest) returns (QueryResponse);
 }
 
 // The request message for the HealthCheck RPC.
@@ -30,4 +33,14 @@ message ParseFileRequest {
 message ParseFileResponse {
   // This will be expanded later to include the parsed file structure.
   bool success = 1;
+}
+
+// The request message for the QueryCodebase RPC.
+message QueryRequest {
+  string query = 1;
+}
+
+// The response message for the QueryCodebase RPC.
+message QueryResponse {
+  string response = 1;
 }

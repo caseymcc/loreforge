@@ -23,7 +23,17 @@ RUN if [ -z "$UBUNTU_CODENAME" ]; then \
 
 # Install essential build tools and dependencies
 RUN apt-get update && \
-    apt-get install -y build-essential git cmake ninja-build curl zip unzip pkg-config gfortran
+    apt-get install -y \
+        build-essential \
+        git \
+        cmake \
+        ninja-build \
+        curl \
+        zip \
+        unzip \
+        pkg-config \
+        gfortran
+        
 #RUN apt-get install -y clang-12
 RUN apt-get install -y \
     clang-17 \
