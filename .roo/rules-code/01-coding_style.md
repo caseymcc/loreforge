@@ -1,39 +1,38 @@
-Rules for formatting C/C++:
-- Braces:
-  - Open (namespaces, fns, ctrl): new line.
-  - Open (struct/class def H): same line.
-  - Inline empty ctor (H): {} same line.
-  - Close: own new line.
-- #include "" local files, <> for lib
-- Indent: 4sp; namespaces, types, fns, ctrl blks, ctor init lists.
-- Spaces:
-  - No: =, ::, :, (unary)!, (deref)*, (arith)+/-, between keyword/function and ().
-  - Yes: (compare)!=/>=, (logical)&&/||/....
-- Commas: after, not before.
-- Semicolons: not before.
-- No: keyword/fn_name ( params ).
-- No: inside ()/<>, unless empty.
-- Ctor Init: : after ctor().
-- Blank Lines: btwn methods; sep. logical blks in methods.
-- Naming:
-  - Types: PascalCase.
-  - Fns/Methods: camelCase.
-  - Class Members: m_camelCase.
-  - Struct/Local Vars: camelCase.
-  - Macros: UPPER_CASE_UNDERSCORED.
-- Pointers/Refs: type *var / type &var.
-- Preprocessor: #ifdef/#endif unindented; content indented; #endif//COMMENT ok.
-- Comments: minimize; // single-line; after stmt ok; dont use when code is obvious.
-- No try/catch if error code usable.
-- Min auto use.
-- Var Decls: top of scope/before ctrl flow; blank line after grp; ctrl flow ends grp.
-- Long Fn Sigs: wrap params to new lines, indent 1 lvl; ) after last param.
-- Header Guard: _PROJECT_FILENAME_EXT_, no pragma once
-- namespace:
-  - avoid using directive
-  - prefer explict qualification
-  - allow namespace aliases for brevity
+C/C++ Style Guide:
 
-Rules for File names:
-- camelCase file name
-- .h/.cpp and .inl
+- File Naming:
+  - `camelCase` for filenames.
+  - Use `.h`, `.cpp`, and `.inl` extensions.
+
+- Header Guards: `_PROJECT_FILENAME_EXT_` (no `#pragma once`).
+- Preprocessor Directives: `#ifdef`/`#endif` unindented; content indented. `//COMMENT` allowed after `#endif`.
+- Indentation: 4 spaces for namespaces, types, functions, control blocks, and constructor initializer lists.
+  Spacing:
+  - No space: `=`, `::`, `:`, unary `!`, dereference `*`, arithmetic `+/-`, between keyword/function and `()`.
+  - Space: comparison `!=`, `>=`, logical `&&`, `||`.
+  - Commas: after, not before.
+  - Semicolons: not before.
+  - No space between `keyword/function_name` and `(params)`.
+  - No space inside `()` or `<>` unless empty.
+- Braces:
+  - `{` for namespaces, functions, control blocks, truct/class definitions: new line.
+  - Empty inline constructors `{}`: same line.
+  - `}`: always on its own new line.
+- Blank Lines: Between methods; to separate logical blocks within methods.
+- Long Function Signatures: Wrap parameters to new lines, indent 1 level; `)` after last parameter.
+- Comments: Minimize. Use `//` for single-line; after statement is fine. Avoid for obvious code.
+- Naming Conventions:
+  - Types: `PascalCase`
+  - Functions/Methods: `camelCase`
+  - Class Members: `m_camelCase`
+  - Struct/Local Variables: `camelCase`
+  - Macros: `UPPER_CASE_UNDERSCORED`
+- `auto` Keyword: Use sparingly. Only when type is immediately obvious from initializer.
+- Namespaces:
+  - Avoid `using` directive.
+  - Prefer explicit qualification.
+  - Allow namespace aliases for brevity.
+- Variable Declarations: at top of scope/before control flow. new line after groups; control flow ends groups.
+- Constructor Initialization: `:` after `ctor()`.
+- Pointers/References: `type *var` / `type &var`.
+- Error Handling: Prefer error codes over `try/catch` if applicable.

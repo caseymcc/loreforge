@@ -1,3 +1,5 @@
+#include "loreforge/service.h"
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -5,22 +7,27 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-#include "loreforge_service.h"
-
-void RunServer() {
-    std::string server_address("0.0.0.0:50051");
-    LoreForgeServiceImpl service;
-
+void runServer()
+{
+    loreforge::Service service;
     grpc::ServerBuilder builder;
-    builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    std::string serverAddress("0.0.0.0:50051");
+
+    builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
 
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-    std::cout << "Server listening on " << server_address << std::endl;
+
+    std::cout<<"Server listening on "<<serverAddress<<std::endl;
+    std::cout<<"Indexing codebase..."<<std::endl;
+    service.getCodebaseManager()->indexDirectory(".");
+    std::cout<<"Codebase indexed."<<std::endl;
+
     server->Wait();
 }
 
-int main(int argc, char** argv) {
-    RunServer();
+int main(int argc, char **argv)
+{
+    runServer();
     return 0;
 }

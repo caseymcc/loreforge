@@ -29,7 +29,9 @@ add_subdirectory(src/hermesaxiom)
 
 add_executable(loreforge
     src/loreforge/main.cpp
-    src/loreforge/loreforge_service.cpp
+    src/loreforge/service.cpp
+    src/loreforge/codeParser.cpp
+    src/loreforge/codebaseManager.cpp
     $<TARGET_OBJECTS:loreforge_grpc_obj>
 )
 set_target_properties(loreforge PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -42,6 +44,10 @@ target_include_directories(loreforge PRIVATE
 target_link_libraries(loreforge PRIVATE
     Crow::Crow
     unofficial::tree-sitter::tree-sitter
+    unofficial::tree-sitter::tree-sitter-cpp
+    unofficial::tree-sitter::tree-sitter-python
+    unofficial::tree-sitter::tree-sitter-javascript
+    unofficial::tree-sitter::tree-sitter-typescript
     faiss
     OpenBLAS::OpenBLAS
     ${LAPACK_LIBRARIES}
@@ -74,6 +80,7 @@ protobuf_generate(
 )
 
 target_include_directories(loreforge_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 

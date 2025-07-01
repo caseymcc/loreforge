@@ -102,22 +102,21 @@ This phase focuses on establishing the fundamental C++ parsing capabilities and 
 
 This phase focuses on enabling natural language querying of the codebase by integrating the LLM with the retrieval system.
 
-  - [ ] Add **hermesaxiom** to the project as a Git submodule (git@github.com:caseymcc/hermesaxiom.git) and integrate the submodule into the CMake build process. **Focus - hermesaxiom is a submodule and in development, make changes to its repo as needed according to its `src/hermeseaxiom/docs/development_plan.md` to support `LoreForge`'s needs.**
-      - [ ] **Dependency on hermesaxiom Phase 1 (Core Library Enhancement):** `hermesaxiom` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
-      - [ ] **Dependency on hermesaxiom Phase 2 (API and Feature Expansion):**
-          - [ ] `hermesaxiom::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.
+  - [x] Add **hermesaxiom** to the project as a Git submodule (git@github.com:caseymcc/hermesaxiom.git) and integrate the submodule into the CMake build process. **Focus - hermesaxiom is a submodule and in development, make changes to its repo as needed according to its `src/hermeseaxiom/docs/development_plan.md` to support `LoreForge`'s needs.**
+      - [x] **Dependency on hermesaxiom Phase 1 (Core Library Enhancement):** `hermesaxiom` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
+      - [x] **Dependency on hermesaxiom Phase 2 (API and Feature Expansion):**
+          - [x] `hermesaxiom::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.
           - [ ] Full streaming support in `hermesaxiom`'s `streamingCompletion` function across all providers will be beneficial for `LoreForge` to provide real-time responses for longer LLM interactions.
           - [ ] `CompletionRequest` needs to include a comprehensive set of parameters (e.g., `top_p`, `stop sequences`, `temperature`) so `LoreForge` can finely tune LLM behavior.
-  - [ ] Define new gRPC RPCs in the `.proto` file for querying, e.g., `QueryCodebase(QueryRequest) returns (QueryResponse)`.
-  - [ ] Create a query function within the gRPC server that:
+  - [x] Create a `CodeParser` class to abstract away the tree-sitter logic and provide a clean interface for parsing different languages.
+  - [x] Define new gRPC RPCs in the `.proto` file for querying, e.g., `QueryCodebase(QueryRequest) returns (QueryResponse)`.
+  - [x] Integrate the Faiss library into the project using vcpkg.
+  - [x] Create a query function within the gRPC server that:
       - [ ] Takes a natural language query (received via gRPC).
       - [ ] Generates an embedding for the query using **hermesaxiom**'s `embedding()` function.
       - [ ] Retrieves the top N most similar code chunks from Faiss.
       - [ ] Formats a prompt containing the query and the retrieved code.
       - [ ] Sends the prompt to the LLM via the **hermesaxiom** library and returns the result (via gRPC).
-  - [ ] Provide a caching system to be maintained on the filesystem:
-      - [ ] Write cache to filesystem (e.g., serialized parsed data, embeddings, Faiss index snapshots).
-      - [ ] Implement asynchronous updates to watch files that have been processed for changes and update the cache and Faiss index as needed.
 
 -----
 
@@ -125,7 +124,6 @@ This phase focuses on enabling natural language querying of the codebase by inte
 
 This phase integrates the embedding generation process and sets up Faiss for efficient storage and retrieval.
 
-  - [ ] Integrate the Faiss library into the project using vcpkg.
   - [ ] Use the **hermesaxiom** library to handle the loading of an embedding model.
       - [ ] **Dependency on hermesaxiom Phase 2 (Embeddings API):** This is a direct dependency on `hermesaxiom::embedding()`.
   - [ ] Modify the parsing application/server logic to:
@@ -133,6 +131,9 @@ This phase integrates the embedding generation process and sets up Faiss for eff
       - [ ] Generate embeddings for each function/class using **hermesaxiom**.
       - [ ] Store these embeddings in a Faiss index, associating them with their source code, file path, and any extracted metadata (function names, potentially derived call relationships if possible with tree-sitter).
       - [ ] **Key Consideration for Faiss**: Implement custom logic for data persistence (saving/loading the Faiss index to disk) and consider strategies for managing large indices that might exceed RAM. Faiss primarily focuses on similarity search, so database-like features will need to be custom-built around it.
+  - [ ] Provide a caching system to be maintained on the filesystem:
+      - [ ] Write cache to filesystem (e.g., serialized parsed data, embeddings, Faiss index snapshots).
+      - [ ] Implement asynchronous updates to watch files that have been processed for changes and update the cache and Faiss index as needed.
 
 -----
 
