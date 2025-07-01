@@ -11,7 +11,7 @@ service LoreForge {
   rpc ParseFile (ParseFileRequest) returns (ParseFileResponse) {}
 
   // Queries the codebase.
-  rpc QueryCodebase(QueryRequest) returns (QueryResponse);
+  rpc QueryCodebase(QueryRequest) returns (stream QueryResponse);
 }
 
 // The request message for the HealthCheck RPC.
@@ -42,5 +42,5 @@ message QueryRequest {
 
 // The response message for the QueryCodebase RPC.
 message QueryResponse {
-  string response = 1;
+  string response_chunk = 1;
 }

@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(LoreForge LANGUAGES CXX)
 
-add_subdirectory(src/hermesaxiom)
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -26,6 +24,8 @@ target_include_directories(loreforge_grpc_obj PUBLIC
 )
 
 target_link_libraries(loreforge_grpc_obj PUBLIC protobuf::libprotobuf)
+
+add_subdirectory(src/hermesaxiom)
 
 add_executable(loreforge
     src/loreforge/main.cpp

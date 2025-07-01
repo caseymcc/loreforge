@@ -54,12 +54,11 @@ graph TD
 
 A phased approach to development using a C++ toolchain, incorporating insights on how to best utilize the chosen tools.
 
-### **Build Environment:** 
+### **Build Environment:**
 All `LoreForge` build, execution, debugging, and testing occurs within a Docker container located at the project root, `Dockerfile`.
 
   * ### Managing the Docker Container
     The runDocker.sh script, located in the project root, manages the Docker container lifecycle.
-
     * `runDocker.sh [command]`: Starts (or creates and starts) the container. If already running, it attaches. If `[command]` are provided, they are executed within the running container via docker exec.
     * `runDocker.sh --stop`: Stops and removes the container.
     * `runDocker.sh --restart`: Restarts an existing container and attaches.
@@ -68,7 +67,7 @@ All `LoreForge` build, execution, debugging, and testing occurs within a Docker 
     Execute build.sh inside the running Docker container from the project root.
     * `build.sh`: Builds the application.
     * `build.sh --rebuild`: Cleans and then builds the application.
-    * `build.sh --rebuild-cmake`: Cleans CMake build directory, re-runs CMake, and then builds.
+    * `build.sh --rebuild-cmake`: Deletes CMake build directory, re-runs CMake, and then builds. Only use if something is wrong with the cmake build, `build.sh` alone will run cmake if any of the cmake files change.
   * ### Running the LoreForge Server
     The runServer.sh script, located in the project root, manages the LoreForge gRPC server. `runServer.sh [options] [command]`
     * `runServer.sh` or `runServer.sh start`: Starts the server.
@@ -78,6 +77,8 @@ All `LoreForge` build, execution, debugging, and testing occurs within a Docker 
     * `runServer.sh --build <type>`: Sets the build type (default: debug).
   * The application binary is located at `build/${OS}_${ARCH}_${BUILD_TYPE}` within the container.
   * When running test make sure to restart the server `runServer.sh` before running the tests
+  * both `build.sh` and `runServer.sh` have to be ran using `runDocker.sh`
+  
 
 -----
 
@@ -101,7 +102,7 @@ This phase focuses on establishing the fundamental C++ parsing capabilities and 
 
 This phase focuses on enabling natural language querying of the codebase by integrating the LLM with the retrieval system.
 
-  - [ ] Add **hermesaxiom** to the project as a Git submodule (git@github.com:caseymcc/hermesaxiom.git) and integrate the submodule into the CMake build process. **Focus - hermesaxiom is a submodule and in development, make changes to its repo as needed according to its `docs/development_plan.md` to support `LoreForge`'s needs.**
+  - [ ] Add **hermesaxiom** to the project as a Git submodule (git@github.com:caseymcc/hermesaxiom.git) and integrate the submodule into the CMake build process. **Focus - hermesaxiom is a submodule and in development, make changes to its repo as needed according to its `src/hermeseaxiom/docs/development_plan.md` to support `LoreForge`'s needs.**
       - [ ] **Dependency on hermesaxiom Phase 1 (Core Library Enhancement):** `hermesaxiom` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
       - [ ] **Dependency on hermesaxiom Phase 2 (API and Feature Expansion):**
           - [ ] `hermesaxiom::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.

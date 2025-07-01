@@ -1,4 +1,4 @@
-### **Build Environment:** 
+### **Build Environment:**
 All `LoreForge` build, execution, debugging, and testing occurs within a Docker container located at the project root, `Dockerfile`.
 
   * ### Managing the Docker Container
@@ -11,7 +11,7 @@ All `LoreForge` build, execution, debugging, and testing occurs within a Docker 
     Execute build.sh inside the running Docker container from the project root.
     * `build.sh`: Builds the application.
     * `build.sh --rebuild`: Cleans and then builds the application.
-    * `build.sh --rebuild-cmake`: Cleans CMake build directory, re-runs CMake, and then builds.
+    * `build.sh --rebuild-cmake`: Deletes CMake build directory, re-runs CMake, and then builds. Only use if something is wrong with the cmake build, `build.sh` alone will run cmake if any of the cmake files change.
   * ### Running the LoreForge Server
     The runServer.sh script, located in the project root, manages the LoreForge gRPC server. `runServer.sh [options] [command]`
     * `runServer.sh` or `runServer.sh start`: Starts the server.
