@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <cstring>
+#include <string>
 
 namespace loreforge
 {
@@ -47,32 +48,53 @@ std::vector<CodeChunk> CodeParser::parse(const std::string &filePath)
     }
 
     std::vector<CodeChunk> chunks;
+    size_t chunkSize = 1024 * 1024; // 1MB chunks
+    size_t pos = 0;
 
-    findChunks(sourceCode, language, chunks);
+    while (pos < sourceCode.size())
+    {
+        size_t end = std::min(pos + chunkSize, sourceCode.size());
+        std::string chunkContent = sourceCode.substr(pos, end - pos);
+        CodeChunk chunk;
+        chunk.filePath = filePath;
+        chunk.startLine = 1; // Placeholder, will be updated later
+        chunk.endLine = 1;   // Placeholder, will be updated later
+        chunk.content = chunkContent;
+        chunk.type = "chunk";
+        chunks.push_back(chunk);
+        pos = end;
+    }
+
+    findChunks(sourceCode, language, chunks, filePath);
+    return chunks;
+}
+
+std::vector<CodeChunk> CodeParser::parse(const std::string &fileName, const std::string &content)
+{
+    std::vector<CodeChunk> chunks;
+    TSLanguage *language = getLanguage(fileName);
+    if (language)
+    {
+        findChunks(content, language, chunks, fileName);
+    }
     return chunks;
 }
 
 TSLanguage *CodeParser::getLanguage(const std::string &filePath)
 {
-    std::string extension=filePath.substr(filePath.find_last_of(".")+1);
-    static const std::map<std::string, TSLanguage *> language_map={
-        {"cpp", tree_sitter_cpp()},
-        {"h", tree_sitter_cpp()},
-        {"hpp", tree_sitter_cpp()},
-        {"py", tree_sitter_python()},
-        {"js", tree_sitter_javascript()},
-        {"ts", tree_sitter_typescript()}
-    };
-
-    auto it=language_map.find(extension);
-    if(it!=language_map.end())
-    {
-        return it->second;
-    }
-    return nullptr;
+    if (filePath.ends_with(".cpp") || filePath.ends_with(".h"))
+        return tree_sitter_cpp();
+    else if (filePath.ends_with(".py"))
+        return tree_sitter_python();
+    else if (filePath.ends_with(".js"))
+        return tree_sitter_javascript();
+    else if (filePath.ends_with(".ts"))
+        return tree_sitter_typescript();
+    else
+        return nullptr;
 }
 
-void CodeParser::findChunks(const std::string &sourceCode, TSLanguage *language, std::vector<CodeChunk> &chunks)
+void CodeParser::findChunks(const std::string &sourceCode, TSLanguage *language, std::vector<CodeChunk> &chunks, const std::string &filePath)
 {
     if(!ts_parser_set_language(m_parser.get(), language))
     {
@@ -88,9 +110,20 @@ void CodeParser::findChunks(const std::string &sourceCode, TSLanguage *language,
     }
 
     TSNode root_node=ts_tree_root_node(tree);
+    if (ts_node_has_error(root_node)) {
+        ts_tree_delete(tree);
+        return;
+    }
 
-    // A generic query for functions. This will need to be adapted for each language.
-    const char *query_string="(function_definition) @function";
+    const char *query_string;
+    if (language == tree_sitter_cpp()) {
+        query_string = "[(function_definition) @function (class_specifier) @class]";
+    } else if (language == tree_sitter_python()) {
+        query_string = "[(function_definition) @function (class_definition) @class]";
+    } else {
+        query_string = "[(function_declaration) @function (class_declaration) @class]";
+    }
+
     uint32_t error_offset;
     TSQueryError error_type;
     TSQuery *query=ts_query_new(language, query_string, strlen(query_string), &error_offset, &error_type);
@@ -116,13 +149,29 @@ void CodeParser::findChunks(const std::string &sourceCode, TSLanguage *language,
             uint32_t end_byte=ts_node_end_byte(captured_node);
 
             CodeChunk chunk;
+            chunk.filePath = filePath;
             chunk.startLine=ts_node_start_point(captured_node).row+1;
             chunk.endLine=ts_node_end_point(captured_node).row+1;
             chunk.content=sourceCode.substr(start_byte, end_byte-start_byte);
             chunk.type=ts_node_type(captured_node);
 
-            // Placeholder for identifier extraction
-            chunk.identifier="unknown";
+            TSNode name_node;
+            if (strcmp(chunk.type.c_str(), "class_specifier") == 0 || strcmp(chunk.type.c_str(), "class_definition") == 0 || strcmp(chunk.type.c_str(), "class_declaration") == 0) {
+                name_node = ts_node_child_by_field_name(captured_node, "name", 4);
+            } else {
+                name_node = ts_node_child_by_field_name(captured_node, "declarator", 10);
+                 if (ts_node_is_null(name_node)) {
+                    name_node = ts_node_child_by_field_name(captured_node, "name", 4);
+                }
+            }
+
+            if (!ts_node_is_null(name_node)) {
+                uint32_t name_start_byte = ts_node_start_byte(name_node);
+                uint32_t name_end_byte = ts_node_end_byte(name_node);
+                chunk.identifier = sourceCode.substr(name_start_byte, name_end_byte - name_start_byte);
+            } else {
+                chunk.identifier="unknown";
+            }
 
             chunks.push_back(chunk);
         }

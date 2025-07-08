@@ -61,6 +61,11 @@ enable_testing()
 
 add_executable(loreforge_tests
     tests/main.cpp
+    tests/serverTests.cpp
+    tests/embeddingTests.cpp
+    src/loreforge/service.cpp
+    src/loreforge/codeParser.cpp
+    src/loreforge/codebaseManager.cpp
     $<TARGET_OBJECTS:loreforge_grpc_obj>
 )
 
@@ -89,6 +94,17 @@ target_link_libraries(loreforge_tests PRIVATE
     GTest::gtest
     GTest::gmock
     gRPC::grpc++
-    protobuf::libprotobuf)
+    protobuf::libprotobuf
+    Crow::Crow
+    unofficial::tree-sitter::tree-sitter
+    unofficial::tree-sitter::tree-sitter-cpp
+    unofficial::tree-sitter::tree-sitter-python
+    unofficial::tree-sitter::tree-sitter-javascript
+    unofficial::tree-sitter::tree-sitter-typescript
+    faiss
+    OpenBLAS::OpenBLAS
+    ${LAPACK_LIBRARIES}
+    ${BLAS_LIBRARIES}
+    hermesaxiom)
 
 include(GoogleTest)

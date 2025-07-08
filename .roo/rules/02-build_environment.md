@@ -20,6 +20,6 @@ All `LoreForge` build, execution, debugging, and testing occurs within a Docker 
     * `runServer.sh --arch <arch>`: Sets the architecture (default: x64).
     * `runServer.sh --build <type>`: Sets the build type (default: debug).
   * The application binary is located at `build/${OS}_${ARCH}_${BUILD_TYPE}` within the container.
-  * When running test make sure to restart the server `runServer.sh` before running the tests
+  * When running `loreforge_tests` make sure the server is running with `runServer.sh` before running the tests, `runServer.sh` will restart the server if it is already running.
   * both `build.sh` and `runServer.sh` have to be ran using `runDocker.sh`
   

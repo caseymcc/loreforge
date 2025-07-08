@@ -29,10 +29,11 @@ public:
     ~CodeParser();
 
     std::vector<CodeChunk> parse(const std::string &file_path);
+    std::vector<CodeChunk> parse(const std::string &fileName, const std::string &content);
 
 private:
     TSLanguage *getLanguage(const std::string &file_path);
-    void findChunks(const std::string &source_code, TSLanguage *language, std::vector<CodeChunk> &chunks);
+    void findChunks(const std::string &source_code, TSLanguage *language, std::vector<CodeChunk> &chunks, const std::string &filePath);
 
     std::unique_ptr<TSParser, void(*)(TSParser *)> m_parser;
 };

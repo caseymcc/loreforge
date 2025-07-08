@@ -1,0 +1,7 @@
+{
+    "models": [
+        {
+            "model": "hermes-2-pro-mistral-7b.Q4_K_M.gguf"
+        }
+    ]
+}

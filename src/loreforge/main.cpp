@@ -19,9 +19,6 @@ void runServer()
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
 
     std::cout<<"Server listening on "<<serverAddress<<std::endl;
-    std::cout<<"Indexing codebase..."<<std::endl;
-    service.getCodebaseManager()->indexDirectory(".");
-    std::cout<<"Codebase indexed."<<std::endl;
 
     server->Wait();
 }

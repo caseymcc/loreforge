@@ -1,156 +1,128 @@
-#include "loreforge/codebaseManager.h"
+#include "codebaseManager.h"
 
+#include <faiss/index_io.h>
 #include <faiss/IndexFlat.h>
-
-#include <filesystem>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <filesystem>
 
-namespace loreforge
-{
+namespace loreforge {
 
-CodebaseManager::CodebaseManager(
-    std::shared_ptr<CodeParser> parser,
-    std::shared_ptr<hermesaxiom::hermesaxiom> hermes_axiom
-) : m_parser(parser), m_hermesAxiom(hermes_axiom)
-{
+namespace fs = std::filesystem;
+
+CodebaseManager::CodebaseManager(std::shared_ptr<CodeParser> parser, std::shared_ptr<hermesaxiom::hermesaxiom> hermes)
+    : m_codeParser(parser), m_embeddingModel(hermes) {
+    m_dimension = 768; // This should be dynamically determined from the model
+    m_faissIndex = std::make_unique<faiss::IndexFlatL2>(m_dimension);
 }
 
-CodebaseManager::~CodebaseManager()
-{
-    if(m_indexFuture.valid())
-    {
-        m_indexFuture.wait();
-    }
-}
+CodebaseManager::~CodebaseManager() = default;
 
-bool CodebaseManager::isReady() const
-{
-    return m_isReady.load();
-}
-
-void CodebaseManager::doIndexing(const std::string &path)
-{
-    try
-    {
-        std::vector<std::string> files;
-        for(const auto &entry:std::filesystem::recursive_directory_iterator(path))
-        {
-            if(entry.is_regular_file())
-            {
-                files.push_back(entry.path().string());
-            }
-        }
-
-        m_allChunks.clear();
-        for(const auto &file:files)
-        {
-            auto chunks=m_parser->parse(file);
-            m_allChunks.insert(m_allChunks.end(), chunks.begin(), chunks.end());
-        }
-
-        if(m_allChunks.empty())
-        {
-            std::cerr<<"No code chunks found to index."<<std::endl;
-            m_isReady=true;
-            return;
-        }
-
-        std::vector<std::string> texts_to_embed;
-        for(const auto &chunk:m_allChunks)
-        {
-            texts_to_embed.push_back(chunk.content);
-        }
-
-        hermesaxiom::EmbeddingRequest request;
-        request.input=texts_to_embed;
-        hermesaxiom::EmbeddingResponse response;
-        if(m_hermesAxiom->getEmbeddings(request, response)!=hermesaxiom::ErrorCode::Success)
-        {
-            std::cerr<<"Failed to generate embeddings."<<std::endl;
-            m_isReady=true;
-            return;
-        }
-
-        std::vector<std::vector<float>> embeddings;
-        embeddings.reserve(response.data.size());
-        for(const auto &emb:response.data)
-        {
-            embeddings.push_back(emb.embedding);
-        }
-
-        if(embeddings.empty())
-        {
-            std::cerr<<"No embeddings generated."<<std::endl;
-            m_isReady=true;
-            return;
-        }
-
-        int dimension=embeddings[0].size();
-        m_faissIndex=std::make_unique<faiss::IndexFlatL2>(dimension);
-
-        std::vector<float> flat_embeddings;
-        flat_embeddings.reserve(embeddings.size()*dimension);
-        for(const auto &vec:embeddings)
-        {
-            flat_embeddings.insert(flat_embeddings.end(), vec.begin(), vec.end());
-        }
-
-        m_faissIndex->add(embeddings.size(), flat_embeddings.data());
-
-        m_isReady=true;
-        std::cout<<"Indexing complete. Codebase is ready."<<std::endl;
-
-    }
-    catch(const std::exception &e)
-    {
-        std::cerr<<"Error during indexing: "<<e.what()<<std::endl;
-        m_isReady=true; // Mark as ready to avoid blocking, even on failure
+void CodebaseManager::processFile(const std::string& filePath) {
+    auto chunks = m_codeParser->parse(filePath);
+    if (!chunks.empty()) {
+        embedChunks(chunks);
     }
 }
 
-void CodebaseManager::indexDirectory(const std::string &path)
-{
-    if(m_indexFuture.valid()&&m_indexFuture.wait_for(std::chrono::seconds(0))!=std::future_status::ready)
-    {
-        std::cout<<"Indexing is already in progress."<<std::endl;
-        return;
+void CodebaseManager::processDirectory(const std::string& directoryPath, const std::string& model) {
+    m_embeddingModelName = model;
+    for (const auto& entry : fs::recursive_directory_iterator(directoryPath)) {
+        if (entry.is_regular_file()) {
+            processFile(entry.path().string());
+        }
     }
-    m_isReady=false;
-    m_indexFuture=std::async(std::launch::async, &CodebaseManager::doIndexing, this, path);
+    m_ready = true;
 }
 
-std::vector<CodeChunk> CodebaseManager::query(const std::string &query_text, int k)
-{
-    if(!isReady())
-    {
-        return {};
-    }
+void CodebaseManager::embedChunks(const std::vector<CodeChunk>& chunks) {
+    hermesaxiom::EmbeddingRequest request;
+    request.model = m_embeddingModelName;
 
-    if(!m_faissIndex||m_faissIndex->ntotal==0)
-    {
-        return {};
+    std::vector<std::string> contents;
+    for (const auto& chunk : chunks) {
+        contents.push_back(chunk.content);
     }
+    request.input = contents;
+
+    hermesaxiom::EmbeddingResponse response;
+    hermesaxiom::ErrorCode status = m_embeddingModel->getEmbeddings(request, response);
+    if (status == hermesaxiom::ErrorCode::Success) {
+        for (const auto& embeddingData : response.data) {
+            int newChunkIndex = m_codeChunks.size();
+            m_codeChunks.push_back(chunks[embeddingData.index]);
+
+            long id = m_faissIndex->ntotal;
+            m_faissIndex->add(1, embeddingData.embedding.data());
+            m_faissIdToChunkIndex[id] = newChunkIndex;
+        }
+    } else {
+        if (!chunks.empty()) {
+            std::cerr << "Failed to get embeddings for " << chunks[0].filePath << " with error code " << static_cast<int>(status) << std::endl;
+        }
+    }
+}
+
+void CodebaseManager::saveIndex(const std::string& indexPath) {
+    faiss::write_index(m_faissIndex.get(), indexPath.c_str());
+    std::ofstream mapFile(indexPath + ".map");
+    for (const auto& pair : m_faissIdToChunkIndex) {
+        mapFile << pair.first << " " << pair.second << "\n";
+    }
+}
+
+bool CodebaseManager::loadIndex(const std::string& indexPath) {
+    try {
+        m_faissIndex.reset(faiss::read_index(indexPath.c_str()));
+        std::ifstream mapFile(indexPath + ".map");
+        long faiss_id;
+        int chunk_index;
+        m_faissIdToChunkIndex.clear();
+        while (mapFile >> faiss_id >> chunk_index) {
+            m_faissIdToChunkIndex[faiss_id] = chunk_index;
+        }
+        m_ready = true;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading Faiss index: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool CodebaseManager::isReady() {
+    return m_ready;
+}
+
+int CodebaseManager::getVectorCount() {
+    return m_faissIndex->ntotal;
+}
+
+std::shared_ptr<CodeParser> CodebaseManager::getCodeParser() {
+    return m_codeParser;
+}
+
+std::vector<CodeChunk> CodebaseManager::search(const std::string& query, const std::string& model, int k) {
+    std::vector<CodeChunk> results;
 
     hermesaxiom::EmbeddingRequest request;
-    request.input=query_text;
+    request.model = model;
+    request.input = query;
+
     hermesaxiom::EmbeddingResponse response;
-    if(m_hermesAxiom->getEmbeddings(request, response)!=hermesaxiom::ErrorCode::Success||response.data.empty())
-    {
-        return {};
+    if (m_embeddingModel->getEmbeddings(request, response) != hermesaxiom::ErrorCode::Success || response.data.empty()) {
+        std::cerr << "Failed to get query embedding" << std::endl;
+        return results;
     }
 
-    std::vector<float> flatAueryEmbedding=response.data[0].embedding;
-    std::vector<faiss::idx_t> indices(k);
+    std::vector<long> labels(k);
     std::vector<float> distances(k);
 
-    m_faissIndex->search(1, flatAueryEmbedding.data(), k, distances.data(), indices.data());
+    m_faissIndex->search(1, response.data[0].embedding.data(), k, distances.data(), labels.data());
 
-    std::vector<CodeChunk> results;
-    for(faiss::idx_t i:indices)
-    {
-        if(i>=0&&i<m_allChunks.size())
-        {
-            results.push_back(m_allChunks[i]);
+    for (long label : labels) {
+        if (label >= 0 && m_faissIdToChunkIndex.count(label)) {
+            results.push_back(m_codeChunks[m_faissIdToChunkIndex[label]]);
         }
     }
 

@@ -1,16 +1,19 @@
-#ifndef _loreforge_codebaseManager_h
-#define _loreforge_codebaseManager_h
+#ifndef _LOREFORGE_CODEBASEMANAGER_H_
+#define _LOREFORGE_CODEBASEMANAGER_H_
 
-#include "loreforge/codeParser.h"
-#include "hermesaxiom/hermesaxiom.h"
+#include "codeParser.h"
+#include <hermesaxiom/hermesaxiom.h>
+
 #include <string>
 #include <vector>
 #include <memory>
-#include <future>
-#include <atomic>
+#include <map>
 
 // Forward declaration for Faiss index
-namespace faiss { struct Index; }
+namespace faiss
+{
+struct Index;
+}
 
 namespace loreforge
 {
@@ -18,28 +21,32 @@ namespace loreforge
 class CodebaseManager
 {
 public:
-    CodebaseManager(
-        std::shared_ptr<CodeParser> parser,
-        std::shared_ptr<hermesaxiom::hermesaxiom> hermes_axiom
-    );
+    CodebaseManager(std::shared_ptr<CodeParser> parser, std::shared_ptr<hermesaxiom::hermesaxiom> hermes);
     ~CodebaseManager();
 
-    void indexDirectory(const std::string &path);
-    std::vector<CodeChunk> query(const std::string &query_text, int k=5);
-    bool isReady() const;
+    void processDirectory(const std::string &directoryPath, const std::string &model);
+    void saveIndex(const std::string &indexPath);
+    bool loadIndex(const std::string &indexPath);
+    std::vector<CodeChunk> search(const std::string &query, const std::string &model, int k);
+    bool isReady();
+    int getVectorCount();
+    std::shared_ptr<CodeParser> getCodeParser();
 
 private:
-    void doIndexing(const std::string &path);
+    void processFile(const std::string &filePath);
+    void embedChunks(const std::vector<CodeChunk> &chunks);
 
-    std::shared_ptr<CodeParser> m_parser;
-    std::shared_ptr<hermesaxiom::hermesaxiom> m_hermesAxiom;
-
-    std::vector<CodeChunk> m_allChunks;
+    std::shared_ptr<hermesaxiom::hermesaxiom> m_embeddingModel;
     std::unique_ptr<faiss::Index> m_faissIndex;
-    std::atomic<bool> m_isReady{ false };
-    std::future<void> m_indexFuture;
+    std::shared_ptr<CodeParser> m_codeParser;
+
+    std::string m_embeddingModelName;
+    std::vector<CodeChunk> m_codeChunks;
+    std::map<long, int> m_faissIdToChunkIndex;
+    int m_dimension;
+    bool m_ready=false;
 };
 
 } // namespace loreforge
 
-#endif // _loreforge_codebaseManager_h
+#endif // _LOREFORGE_CODEBASEMANAGER_H_

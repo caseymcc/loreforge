@@ -12,6 +12,9 @@ service LoreForge {
 
   // Queries the codebase.
   rpc QueryCodebase(QueryRequest) returns (stream QueryResponse);
+
+  // Indexes a repository.
+  rpc IndexRepository(IndexRepositoryRequest) returns (IndexRepositoryResponse);
 }
 
 // The request message for the HealthCheck RPC.
@@ -38,9 +41,22 @@ message ParseFileResponse {
 // The request message for the QueryCodebase RPC.
 message QueryRequest {
   string query = 1;
+  string model = 2;
 }
 
 // The response message for the QueryCodebase RPC.
 message QueryResponse {
   string response_chunk = 1;
+}
+
+// The request message for the IndexRepository RPC.
+message IndexRepositoryRequest {
+  string repository_path = 1;
+  string model = 2;
+}
+
+// The response message for the IndexRepository RPC.
+message IndexRepositoryResponse {
+  bool success = 1;
+  string message = 2;
 }
