@@ -4,6 +4,7 @@ project(LoreForge LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(Threads REQUIRED)
 find_package(Crow REQUIRED)
 find_package(unofficial-tree-sitter CONFIG REQUIRED)
 find_package(Faiss REQUIRED)
@@ -25,7 +26,7 @@ target_include_directories(loreforge_grpc_obj PUBLIC
 
 target_link_libraries(loreforge_grpc_obj PUBLIC protobuf::libprotobuf)
 
-add_subdirectory(src/hermesaxiom)
+add_subdirectory(src/arbiterAI)
 
 add_executable(loreforge
     src/loreforge/main.cpp
@@ -54,7 +55,8 @@ target_link_libraries(loreforge PRIVATE
     ${BLAS_LIBRARIES}
     gRPC::grpc++
     protobuf::libprotobuf
-    hermesaxiom
+    arbiterai
+    Threads::Threads
 )
 
 enable_testing()
@@ -63,6 +65,7 @@ add_executable(loreforge_tests
     tests/main.cpp
     tests/serverTests.cpp
     tests/embeddingTests.cpp
+    tests/modelManagerTests.cpp
     src/loreforge/service.cpp
     src/loreforge/codeParser.cpp
     src/loreforge/codebaseManager.cpp
@@ -105,6 +108,7 @@ target_link_libraries(loreforge_tests PRIVATE
     OpenBLAS::OpenBLAS
     ${LAPACK_LIBRARIES}
     ${BLAS_LIBRARIES}
-    hermesaxiom)
+    arbiterai
+    Threads::Threads)
 
 include(GoogleTest)

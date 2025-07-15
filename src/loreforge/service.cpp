@@ -2,7 +2,7 @@
 #include "loreforge/codeParser.h"
 #include "loreforge/codebaseManager.h"
 
-#include "hermesaxiom/hermesaxiom.h"
+#include "arbiterAI/arbiterAI.h"
 
 #include <sstream>
 
@@ -12,9 +12,9 @@ namespace loreforge
 Service::Service()
 {
     auto codeParser = std::make_shared<CodeParser>();
-    m_hermesAxiom = std::make_shared<hermesaxiom::hermesaxiom>();
-    m_hermesAxiom->initialize({ "/app/src/hermesaxiom/configs/defaults" });
-    m_codebaseManager = std::make_unique<CodebaseManager>(codeParser, m_hermesAxiom);
+    m_arbiterAI = std::make_shared<arbiterAI::arbiterAI>();
+    m_arbiterAI->initialize({ "/app/src/arbiterAI/configs/defaults" });
+    m_codebaseManager = std::make_unique<CodebaseManager>(codeParser, m_arbiterAI);
 }
 
 Service::~Service()=default;
@@ -49,11 +49,11 @@ grpc::Status Service::QueryCodebase(
 
     prompt<<"Based on the provided code, answer the user's query.";
 
-    hermesaxiom::CompletionRequest completionRequest;
+    arbiterAI::CompletionRequest completionRequest;
     completionRequest.model = request->model();
     completionRequest.messages.push_back({ "user", prompt.str() });
 
-    m_hermesAxiom->streamingCompletion(
+    m_arbiterAI->streamingCompletion(
         completionRequest, [writer](const std::string &chunk)
         {
             loreforge::QueryResponse response;

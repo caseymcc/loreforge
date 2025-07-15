@@ -14,9 +14,9 @@ The system will be built using a C++ technology stack, leveraging the chosen too
 | **Package Manager** | Manages project dependencies. | vcpkg | Standard C++ package manager. gRPC and Protocol Buffers can be managed via vcpkg. |
 | **Code Parser & AST Generator** | Traverses source code files, identifies key structures (functions, classes), and extracts their content and metadata. | **tree-sitter** (C++ API) | Tree-sitter provides a robust AST. The challenge will be to extract semantic information robustly using tree-sitter's output, potentially in conjunction with language-specific tools in Phase 5. |
 | **Chunking & AST Analysis** | Breaks down code into meaningful semantic chunks (e.g., functions, methods) for embedding. Analyzes the Abstract Syntax Tree (AST) to build call graphs. | Custom C++ logic using **tree-sitter's output** (and later, deeper semantic tools). | This component is critical to bridge any semantic analysis gaps. Techniques to derive call graph information and precise function signatures from `tree-sitter`'s AST (and later, compiler-grade ASTs) will be developed here. |
-| **Embedding Generator** | Converts code chunks into numerical vector representations (embeddings). | **hermesaxiom** | **hermesaxiom** is in development and included here for development to continue on it. **This is a critical dependency.** |
+| **Embedding Generator** | Converts code chunks into numerical vector representations (embeddings). | **arbiterAI** | **arbiterAI** is in development and included here for development to continue on it. **This is a critical dependency.** |
 | **Vector Database** | Stores the embeddings and allows for efficient similarity searches. | **Faiss** (C++) | Faiss is a high-performance C++ library for similarity search and clustering of dense vectors. It is a fundamental building block. Custom development for data persistence, comprehensive indexing strategies, and distributed deployment will be necessary. |
-| **LLM Query Engine** | Uses a Large Language Model to interpret user queries, synthesize information from retrieved code chunks, and generate natural language descriptions. | **hermesaxiom** (Git Submodule) | **hermesaxiom** remains a core component for LLM interaction. **This is a critical dependency.** |
+| **LLM Query Engine** | Uses a Large Language Model to interpret user queries, synthesize information from retrieved code chunks, and generate natural language descriptions. | **arbiterAI** (Git Submodule) | **arbiterAI** remains a core component for LLM interaction. **This is a critical dependency.** |
 | **Model Selection** | The LLM to power the query engine. | Recommendation: Start with Qwen2.5-Coder-7B-Instruct or DeepSeek-Coder-V2-Lite-Instruct. These models are compatible with GGUF format used by many C++ inference engines. | Good starting point for code-focused LLMs. |
 
 ## 3\. System Architecture
@@ -31,9 +31,9 @@ graph TD
 
     subgraph "LoreForge MCP Server"
         B[MCP Server API - gRPC]
-        C[LLM Query Engine - hermesaxiom]
+        C[LLM Query Engine - arbiterAI]
         D[Vector Database - Faiss]
-        E[Embedding Generator - hermesaxiom]
+        E[Embedding Generator - arbiterAI]
         F[Code Parser & AST Analysis - tree-sitter / Clang]
     end
 
@@ -102,21 +102,29 @@ This phase focuses on establishing the fundamental C++ parsing capabilities and 
 
 This phase focuses on enabling natural language querying of the codebase by integrating the LLM with the retrieval system.
 
-  - [x] Add **hermesaxiom** to the project as a Git submodule (git@github.com:caseymcc/hermesaxiom.git) and integrate the submodule into the CMake build process. **Focus - hermesaxiom is a submodule and in development, make changes to its repo as needed according to its `src/hermeseaxiom/docs/development_plan.md` to support `LoreForge`'s needs.**
-      - [x] **Dependency on hermesaxiom Phase 1 (Core Library Enhancement):** `hermesaxiom` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
-      - [x] **Dependency on hermesaxiom Phase 2 (API and Feature Expansion):**
-          - [x] `hermesaxiom::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.
-          - [ ] Full streaming support in `hermesaxiom`'s `streamingCompletion` function across all providers will be beneficial for `LoreForge` to provide real-time responses for longer LLM interactions.
+  - [x] Add **arbiterAI** to the project as a Git submodule (git@github.com:caseymcc/arbiterAI.git) and integrate the submodule into the CMake build process. **Focus - arbiterAI is a submodule and in development, make changes to its repo as needed according to its `src/arbiterAI/docs/development_plan.md` to support `LoreForge`'s needs.**
+      - [x] **Dependency on arbiterAI Phase 1 (Core Library Enhancement):** `arbiterAI` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
+      - [x] **Dependency on arbiterAI Phase 2 (API and Feature Expansion):**
+          - [x] `arbiterAI::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.
+          - [ ] Full streaming support in `arbiterAI`'s `streamingCompletion` function across all providers will be beneficial for `LoreForge` to provide real-time responses for longer LLM interactions.
           - [ ] `CompletionRequest` needs to include a comprehensive set of parameters (e.g., `top_p`, `stop sequences`, `temperature`) so `LoreForge` can finely tune LLM behavior.
   - [x] Create a `CodeParser` class to abstract away the tree-sitter logic and provide a clean interface for parsing different languages.
   - [x] Define new gRPC RPCs in the `.proto` file for querying, e.g., `QueryCodebase(QueryRequest) returns (QueryResponse)`.
   - [x] Integrate the Faiss library into the project using vcpkg.
   - [x] Create a query function within the gRPC server that:
       - [ ] Takes a natural language query (received via gRPC).
-      - [ ] Generates an embedding for the query using **hermesaxiom**'s `embedding()` function.
+      - [ ] Generates an embedding for the query using **arbiterAI**'s `embedding()` function.
       - [ ] Retrieves the top N most similar code chunks from Faiss.
       - [ ] Formats a prompt containing the query and the retrieved code.
-      - [ ] Sends the prompt to the LLM via the **hermesaxiom** library and returns the result (via gRPC).
+      - [ ] Sends the prompt to the LLM via the **arbiterAI** library and returns the result (via gRPC).
+      - [x] Implement configuration management system:
+          - [x] Create JSON schema for model configurations
+          - [x] Add schema validation to ModelManager
+          - [x] Implement version comparison logic
+          - [x] Add backward compatibility handling
+          - [x] Develop model ranking system
+          - [x] Document architecture changes
+          - [x] Create example v2 config files
 
 -----
 
@@ -124,11 +132,11 @@ This phase focuses on enabling natural language querying of the codebase by inte
 
 This phase integrates the embedding generation process and sets up Faiss for efficient storage and retrieval.
 
-  - [ ] Use the **hermesaxiom** library to handle the loading of an embedding model.
-      - [ ] **Dependency on hermesaxiom Phase 2 (Embeddings API):** This is a direct dependency on `hermesaxiom::embedding()`.
+  - [ ] Use the **arbiterAI** library to handle the loading of an embedding model.
+      - [ ] **Dependency on arbiterAI Phase 2 (Embeddings API):** This is a direct dependency on `arbiterAI::embedding()`.
   - [ ] Modify the parsing application/server logic to:
       - [ ] Chunk code into meaningful semantic units (e.g., function bodies, class definitions) based on tree-sitter's AST output.
-      - [ ] Generate embeddings for each function/class using **hermesaxiom**.
+      - [ ] Generate embeddings for each function/class using **arbiterAI**.
       - [ ] Store these embeddings in a Faiss index, associating them with their source code, file path, and any extracted metadata (function names, potentially derived call relationships if possible with tree-sitter).
       - [ ] **Key Consideration for Faiss**: Implement custom logic for data persistence (saving/loading the Faiss index to disk) and consider strategies for managing large indices that might exceed RAM. Faiss primarily focuses on similarity search, so database-like features will need to be custom-built around it.
   - [ ] Provide a caching system to be maintained on the filesystem:

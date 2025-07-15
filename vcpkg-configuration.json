@@ -6,6 +6,6 @@
   },
   "overlay-ports": [
     "./vcpkg/custom_ports",
-    "./src/hermesaxiom/vcpkg/custom_ports"
+    "./src/arbiterAI/vcpkg/custom_ports"
   ]
 }

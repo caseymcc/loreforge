@@ -32,7 +32,9 @@ RUN apt-get update && \
         zip \
         unzip \
         pkg-config \
-        gfortran
+        gfortran \
+        doxygen \
+        graphviz
         
 #RUN apt-get install -y clang-12
 RUN apt-get install -y \

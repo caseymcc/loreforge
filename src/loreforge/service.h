@@ -1,6 +1,7 @@
 #ifndef _loreforge_service_h
 #define _loreforge_service_h
 
+#include "loreforge/codeParser.h"
 #include "loreforge/codebaseManager.h"
 #include "protos/loreforge.grpc.pb.h"
 
@@ -22,12 +23,12 @@ public:
 
 private:
     grpc::Status QueryCodebase(grpc::ServerContext *context,
-        const loreforge::QueryRequest *request,
-        grpc::ServerWriter<loreforge::QueryResponse> *writer) override;
-    
-    grpc::Status IndexRepository(grpc::ServerContext* context,
-        const loreforge::IndexRepositoryRequest* request,
-        loreforge::IndexRepositoryResponse* response) override;
+        const QueryRequest *request,
+        grpc::ServerWriter<QueryResponse> *writer) override;
+
+    grpc::Status IndexRepository(grpc::ServerContext *context,
+        const IndexRepositoryRequest *request,
+        IndexRepositoryResponse *response) override;
 
     grpc::Status HealthCheck(
         grpc::ServerContext *context, const HealthCheckRequest *request,
@@ -38,7 +39,7 @@ private:
         ParseFileResponse *response) override;
 
     std::unique_ptr<loreforge::CodebaseManager> m_codebaseManager;
-    std::shared_ptr<hermesaxiom::hermesaxiom> m_hermesAxiom;
+    std::shared_ptr<arbiterAI::arbiterAI> m_arbiterAI;
 };
 
 }// namespace loreforge

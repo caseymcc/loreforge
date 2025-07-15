@@ -2,7 +2,7 @@
 #define _LOREFORGE_CODEBASEMANAGER_H_
 
 #include "codeParser.h"
-#include <hermesaxiom/hermesaxiom.h>
+#include <arbiterAI/arbiterAI.h>
 
 #include <string>
 #include <vector>
@@ -21,7 +21,7 @@ namespace loreforge
 class CodebaseManager
 {
 public:
-    CodebaseManager(std::shared_ptr<CodeParser> parser, std::shared_ptr<hermesaxiom::hermesaxiom> hermes);
+    CodebaseManager(std::shared_ptr<CodeParser> parser, std::shared_ptr<arbiterAI::arbiterAI> arbiter);
     ~CodebaseManager();
 
     void processDirectory(const std::string &directoryPath, const std::string &model);
@@ -36,7 +36,7 @@ private:
     void processFile(const std::string &filePath);
     void embedChunks(const std::vector<CodeChunk> &chunks);
 
-    std::shared_ptr<hermesaxiom::hermesaxiom> m_embeddingModel;
+    std::shared_ptr<arbiterAI::arbiterAI> m_embeddingModel;
     std::unique_ptr<faiss::Index> m_faissIndex;
     std::shared_ptr<CodeParser> m_codeParser;
 

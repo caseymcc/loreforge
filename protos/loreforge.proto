@@ -60,3 +60,20 @@ message IndexRepositoryResponse {
   bool success = 1;
   string message = 2;
 }
+
+// The request message for model downloads
+message ModelDownloadRequest {
+    string model_name = 1;
+    string provider = 2;
+    string download_url = 3;
+    string expected_hash = 4;
+    string destination_path = 5;
+}
+
+// The response message for model downloads
+message ModelDownloadResponse {
+    bool success = 1;
+    string message = 2;
+    string actual_hash = 3;
+    string file_path = 4;
+}

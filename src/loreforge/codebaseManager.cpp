@@ -11,8 +11,8 @@ namespace loreforge {
 
 namespace fs = std::filesystem;
 
-CodebaseManager::CodebaseManager(std::shared_ptr<CodeParser> parser, std::shared_ptr<hermesaxiom::hermesaxiom> hermes)
-    : m_codeParser(parser), m_embeddingModel(hermes) {
+CodebaseManager::CodebaseManager(std::shared_ptr<CodeParser> parser, std::shared_ptr<arbiterAI::arbiterAI> arbiter)
+    : m_codeParser(parser), m_embeddingModel(arbiter) {
     m_dimension = 768; // This should be dynamically determined from the model
     m_faissIndex = std::make_unique<faiss::IndexFlatL2>(m_dimension);
 }
@@ -37,7 +37,7 @@ void CodebaseManager::processDirectory(const std::string& directoryPath, const s
 }
 
 void CodebaseManager::embedChunks(const std::vector<CodeChunk>& chunks) {
-    hermesaxiom::EmbeddingRequest request;
+    arbiterAI::EmbeddingRequest request;
     request.model = m_embeddingModelName;
 
     std::vector<std::string> contents;
@@ -46,9 +46,9 @@ void CodebaseManager::embedChunks(const std::vector<CodeChunk>& chunks) {
     }
     request.input = contents;
 
-    hermesaxiom::EmbeddingResponse response;
-    hermesaxiom::ErrorCode status = m_embeddingModel->getEmbeddings(request, response);
-    if (status == hermesaxiom::ErrorCode::Success) {
+    arbiterAI::EmbeddingResponse response;
+    arbiterAI::ErrorCode status = m_embeddingModel->getEmbeddings(request, response);
+    if (status == arbiterAI::ErrorCode::Success) {
         for (const auto& embeddingData : response.data) {
             int newChunkIndex = m_codeChunks.size();
             m_codeChunks.push_back(chunks[embeddingData.index]);
@@ -105,12 +105,12 @@ std::shared_ptr<CodeParser> CodebaseManager::getCodeParser() {
 std::vector<CodeChunk> CodebaseManager::search(const std::string& query, const std::string& model, int k) {
     std::vector<CodeChunk> results;
 
-    hermesaxiom::EmbeddingRequest request;
+    arbiterAI::EmbeddingRequest request;
     request.model = model;
     request.input = query;
 
-    hermesaxiom::EmbeddingResponse response;
-    if (m_embeddingModel->getEmbeddings(request, response) != hermesaxiom::ErrorCode::Success || response.data.empty()) {
+    arbiterAI::EmbeddingResponse response;
+    if (m_embeddingModel->getEmbeddings(request, response) != arbiterAI::ErrorCode::Success || response.data.empty()) {
         std::cerr << "Failed to get query embedding" << std::endl;
         return results;
     }

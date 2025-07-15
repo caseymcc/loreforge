@@ -4,8 +4,20 @@
 #include "loreforge/codeParser.h"
 #include "loreforge/codebaseManager.h"
 #include "loreforge/service.h"
+#include "arbiterAI/modelManager.h"
+
+#include <grpcpp/grpcpp.h>
+#include <thread>
 #include <vector>
 #include <string>
+#include <filesystem>
+
+#define SKIP_IF_NO_MODEL(modelPath) \
+    if (!std::filesystem::exists(modelPath)) { \
+        GTEST_SKIP() << "Skipping test - model file not found: " << modelPath; \
+    }
+
+const std::string TEST_MODEL = "models/hermes-2-pro-mistral-7b.Q4_K_M.gguf";
 
 // Test fixture for embedding tests
 class EmbeddingTest : public ::testing::Test
@@ -78,13 +90,15 @@ TEST_F(EmbeddingTest, CodeChunking_Python)
 
 TEST_F(EmbeddingTest, EmbeddingGeneration)
 {
+    SKIP_IF_NO_MODEL(TEST_MODEL);
+
     auto parser=std::make_shared<loreforge::CodeParser>();
-    auto hermes=std::make_shared<hermesaxiom::hermesaxiom>();
-    hermes->initialize({ "/app/src/hermesaxiom/configs/defaults" });
-    auto manager=std::make_shared<loreforge::CodebaseManager>(parser, hermes);
+    auto arbiter=std::make_shared<arbiterAI::arbiterAI>();
+    arbiter->initialize({ "src/arbiterAI/configs/defaults" });
+    auto manager=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
 
     std::string test_dir="tests/cpp_test_files";
-    manager->processDirectory(test_dir, "hermes-2-pro-mistral-7b.Q4_K_M.gguf");
+    manager->processDirectory(test_dir, TEST_MODEL);
 
     EXPECT_TRUE(manager->isReady());
     EXPECT_EQ(manager->getVectorCount(), 3);
@@ -92,18 +106,20 @@ TEST_F(EmbeddingTest, EmbeddingGeneration)
 
 TEST_F(EmbeddingTest, VectorStorage_SaveAndLoad)
 {
+    SKIP_IF_NO_MODEL(TEST_MODEL);
+
     auto parser=std::make_shared<loreforge::CodeParser>();
-    auto hermes=std::make_shared<hermesaxiom::hermesaxiom>();
-    hermes->initialize({ "/app/src/hermesaxiom/configs/defaults" });
-    auto manager1=std::make_shared<loreforge::CodebaseManager>(parser, hermes);
+    auto arbiter=std::make_shared<arbiterAI::arbiterAI>();
+    arbiter->initialize({ "src/arbiterAI/configs/defaults" });
+    auto manager1=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
 
     std::string test_dir="tests/cpp_test_files";
-    manager1->processDirectory(test_dir, "hermes-2-pro-mistral-7b.Q4_K_M.gguf");
+    manager1->processDirectory(test_dir, TEST_MODEL);
 
     std::string index_path="test_index.faiss";
     manager1->saveIndex(index_path);
 
-    auto manager2=std::make_shared<loreforge::CodebaseManager>(parser, hermes);
+    auto manager2=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
     EXPECT_TRUE(manager2->loadIndex(index_path));
     EXPECT_TRUE(manager2->isReady());
     EXPECT_EQ(manager2->getVectorCount(), 3);
@@ -111,13 +127,15 @@ TEST_F(EmbeddingTest, VectorStorage_SaveAndLoad)
 
 TEST_F(EmbeddingTest, EndToEndPipeline)
 {
+    SKIP_IF_NO_MODEL(TEST_MODEL);
+
     auto parser=std::make_shared<loreforge::CodeParser>();
-    auto hermes=std::make_shared<hermesaxiom::hermesaxiom>();
-    hermes->initialize({ "/app/src/hermesaxiom/configs/defaults" });
-    auto manager=std::make_shared<loreforge::CodebaseManager>(parser, hermes);
+    auto arbiter=std::make_shared<arbiterAI::arbiterAI>();
+    arbiter->initialize({ "src/arbiterAI/configs/defaults" });
+    auto manager=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
 
     std::string test_dir="tests/cpp_test_files";
-    manager->processDirectory(test_dir, "hermes-2-pro-mistral-7b.Q4_K_M.gguf");
+    manager->processDirectory(test_dir, TEST_MODEL);
 
     std::vector<loreforge::CodeChunk> results=manager->search("myFunction", "hermes-2-pro-mistral-7b.Q4_K_M.gguf", 1);
 
@@ -125,47 +143,129 @@ TEST_F(EmbeddingTest, EndToEndPipeline)
     EXPECT_EQ(results[0].identifier, "myFunction");
 }
 
-#include <grpcpp/grpcpp.h>
-#include <thread>
 
 TEST_F(EmbeddingTest, gRPC_SimilaritySearch)
 {
+    // Setup server
     loreforge::Service service;
     grpc::ServerBuilder builder;
-    std::string server_address("0.0.0.0:50051");
-    builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    const std::string serverAddress("0.0.0.0:50051");
+    const std::string modelName=TEST_MODEL;
+    builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
 
-    std::thread server_thread([&server]() { server->Wait(); });
+    // Start server thread
+    std::thread server_thread([&server]()
+        {
+            try
+            {
+                server->Wait();
+            }
+            catch(...)
+            {
+                // Ignore shutdown exceptions
+            }
+        });
 
-    // Index the repository first
-    service.getCodebaseManager()->processDirectory("tests/cpp_test_files", "hermes-2-pro-mistral-7b.Q4_K_M.gguf");
-
-    auto channel=grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials());
-    auto stub=loreforge::LoreForge::NewStub(channel);
-
-    loreforge::QueryRequest request;
-    request.set_query("myFunction");
-    request.set_model("hermes-2-pro-mistral-7b.Q4_K_M.gguf");
-
-    loreforge::QueryResponse response;
-    grpc::ClientContext context;
-    auto stream=stub->QueryCodebase(&context, request);
-
-    std::string full_response;
-    while(stream->Read(&response))
+    // Check for model file
+    if(!std::filesystem::exists(modelName))
     {
-        full_response+=response.response_chunk();
+        server->Shutdown();
+        if(server_thread.joinable())
+        {
+            server_thread.join();
+        }
+        GTEST_SKIP()<<"Skipping test - model file not found: "<<modelName;
+        return;
     }
-    grpc::Status status=stream->Finish();
 
-    EXPECT_TRUE(status.ok());
-    EXPECT_FALSE(full_response.empty());
-    // A more robust test would be to check the content of the response
-    // to ensure it contains the expected code chunk.
-    EXPECT_NE(full_response.find("myFunction"), std::string::npos);
+    try
+    {
+        // Process test files
+        service.getCodebaseManager()->processDirectory("tests/cpp_test_files", modelName);
 
+        // Setup client
+        auto channel=grpc::CreateChannel(serverAddress, grpc::InsecureChannelCredentials());
+        auto stub=loreforge::LoreForge::NewStub(channel);
+
+        // Create and send request
+        loreforge::QueryRequest request;
+        request.set_query("myFunction");
+        request.set_model(modelName);
+
+        // Get response stream
+        loreforge::QueryResponse response;
+        grpc::ClientContext context;
+        std::unique_ptr<grpc::ClientReader<loreforge::QueryResponse>> stream=
+            stub->QueryCodebase(&context, request);
+
+        // Read response
+        std::string full_response;
+        while(stream->Read(&response))
+        {
+            full_response+=response.response_chunk();
+        }
+        grpc::Status status=stream->Finish();
+
+        // Verify results
+        EXPECT_TRUE(status.ok());
+        EXPECT_FALSE(full_response.empty());
+        EXPECT_NE(full_response.find("myFunction"), std::string::npos);
+
+    }
+    catch(const std::exception &e)
+    {
+        FAIL()<<"Exception in gRPC test: "<<e.what();
+    }
+
+    // Cleanup
     server->Shutdown();
-    server_thread.join();
+    if(server_thread.joinable())
+    {
+        server_thread.join();
+    }
 }
+
+// TEST_F(EmbeddingTest, SecureModelDownload)
+// {
+//     SKIP_IF_NO_MODEL(TEST_MODEL);
+    
+//     auto hermes = std::make_shared<arbiterAI::arbiterAI>();
+//     hermes->initialize({ "src/arbiterAI/configs/defaults" });
+    
+//     // Test with valid model path
+//     EXPECT_NO_THROW(hermes->loadModel(TEST_MODEL));
+    
+//     // Test with invalid model path
+//     EXPECT_THROW(hermes->loadModel("invalid/path"), std::runtime_error);
+// }
+
+TEST_F(EmbeddingTest, ConfigValidation)
+{
+    auto hermes = std::make_shared<arbiterAI::arbiterAI>();
+    
+    // Test valid config
+    EXPECT_EQ(hermes->initialize({ "src/arbiterAI/configs/defaults" }), arbiterAI::ErrorCode::Success);
+    
+    // Test invalid config path
+    EXPECT_NE(hermes->initialize({ "invalid/config/path" }), arbiterAI::ErrorCode::Success);
+}
+
+// TEST_F(EmbeddingTest, ModelSecurityFeatures)
+// {
+//     SKIP_IF_NO_MODEL(TEST_MODEL);
+    
+//     auto hermes = std::make_shared<arbiterAI::arbiterAI>();
+    
+//     // Test with valid config that has security features
+//     hermes->initialize({ "src/arbiterAI/configs/defaults" });
+//     auto modelInfo = hermes->getModelManager().getModelInfo(TEST_MODEL);
+    
+//     EXPECT_TRUE(modelInfo.has_value());
+//     if (modelInfo) {
+//         // Verify security features exist
+//         EXPECT_TRUE(modelInfo->download.has_value());
+//         EXPECT_FALSE(modelInfo->download->sha256.empty());
+//     }
+// }
