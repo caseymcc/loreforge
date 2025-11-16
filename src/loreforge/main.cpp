@@ -7,9 +7,9 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-void runServer()
+void runServer(const std::string& repositoryPath, const std::string& model)
 {
-    loreforge::Service service;
+    loreforge::Service service(repositoryPath, model);
     grpc::ServerBuilder builder;
     std::string serverAddress("0.0.0.0:50051");
 
@@ -25,6 +25,18 @@ void runServer()
 
 int main(int argc, char **argv)
 {
-    runServer();
+    std::string repositoryPath = "";
+    std::string model = "";
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--repository" && i + 1 < argc) {
+            repositoryPath = argv[++i];
+        } else if (arg == "--model" && i + 1 < argc) {
+            model = argv[++i];
+        }
+    }
+
+    runServer(repositoryPath, model);
     return 0;
 }

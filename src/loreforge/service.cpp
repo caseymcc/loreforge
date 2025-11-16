@@ -1,6 +1,6 @@
 #include "loreforge/service.h"
+#include "loreforge/globalCodebaseManager.h"
 #include "loreforge/codeParser.h"
-#include "loreforge/codebaseManager.h"
 
 #include "arbiterAI/arbiterAI.h"
 
@@ -9,36 +9,56 @@
 namespace loreforge
 {
 
-Service::Service()
+Service::Service(const std::string &repositoryPath, const std::string &model)
 {
-    auto codeParser = std::make_shared<CodeParser>();
-    m_arbiterAI = std::make_shared<arbiterAI::arbiterAI>();
+    m_arbiterAI=std::make_shared<arbiterAI::ArbiterAI>();
     m_arbiterAI->initialize({ "/app/src/arbiterAI/configs/defaults" });
-    m_codebaseManager = std::make_unique<CodebaseManager>(codeParser, m_arbiterAI);
+    m_globalCodebaseManager=std::make_unique<GlobalCodebaseManager>();
+
+    m_codeParser=std::make_shared<CodeParser>();
+
+    if(!repositoryPath.empty())
+    {
+        auto codebaseManager=std::make_unique<CodebaseManager>();
+
+        codebaseManager->init(m_codeParser, m_arbiterAI, repositoryPath, model);
+        m_globalCodebaseManager->addCodebase("default", std::move(codebaseManager));
+    }
 }
 
 Service::~Service()=default;
 
-CodebaseManager *Service::getCodebaseManager()
+GlobalCodebaseManager *Service::getGlobalCodebaseManager()
 {
-    return m_codebaseManager.get();
+    return m_globalCodebaseManager.get();
 }
 
 grpc::Status Service::QueryCodebase(
     grpc::ServerContext *context, const QueryRequest *request,
     grpc::ServerWriter<QueryResponse> *writer)
 {
-
-    if(!m_codebaseManager->isReady())
+    std::vector<CodeChunk> chunks;
+    if(request->codebase_name().empty())
     {
-        return grpc::Status(grpc::StatusCode::UNAVAILABLE, "Codebase manager is not ready.");
+        chunks=m_globalCodebaseManager->search(request->query(), request->model(), 5);
+    }
+    else
+    {
+        auto codebase=m_globalCodebaseManager->getCodebase(request->codebase_name());
+        if(!codebase||!codebase->isReady())
+        {
+            return grpc::Status(grpc::StatusCode::UNAVAILABLE, "Codebase not ready.");
+        }
+        chunks=codebase->search(request->query(), request->model(), 5);
     }
 
-    auto chunks = m_codebaseManager->search(request->query(), request->model(), 5);
+    // a. Get the query string from the request object.
+    const std::string &query=request->query();
 
+    // d. Construct a prompt for the LLM that includes the original query and the retrieved code chunks.
     std::stringstream prompt;
     prompt<<"You are a helpful coding assistant. Use the following code snippets to answer the user's query.\n\n";
-    prompt<<"User Query: "<<request->query()<<"\n\n";
+    prompt<<"User Query: "<<query<<"\n\n";
     prompt<<"Relevant Code Snippets:\n\n";
 
     for(const CodeChunk &chunk:chunks)
@@ -49,10 +69,12 @@ grpc::Status Service::QueryCodebase(
 
     prompt<<"Based on the provided code, answer the user's query.";
 
+    // e. Use the CodebaseManager to send this prompt to the LLM and get a response.
     arbiterAI::CompletionRequest completionRequest;
-    completionRequest.model = request->model();
+    completionRequest.model=request->model();
     completionRequest.messages.push_back({ "user", prompt.str() });
 
+    // f. Set the LLM's response in the reply object.
     m_arbiterAI->streamingCompletion(
         completionRequest, [writer](const std::string &chunk)
         {
@@ -65,17 +87,28 @@ grpc::Status Service::QueryCodebase(
 }
 
 grpc::Status Service::IndexRepository(
-    grpc::ServerContext* context, const IndexRepositoryRequest* request,
-    IndexRepositoryResponse* response)
+    grpc::ServerContext *context, const IndexRepositoryRequest *request,
+    IndexRepositoryResponse *response)
 {
     try
     {
-        m_codebaseManager->processDirectory(request->repository_path(), request->model());
+        auto codebase=m_globalCodebaseManager->getCodebase(request->codebase_name());
+        if(codebase)
+        {
+            codebase->generateEmbeddings();
+        }
+        else
+        {
+            auto codeParser=std::make_shared<CodeParser>();
+            auto newCodebase=std::make_unique<CodebaseManager>();
+            newCodebase->init(codeParser, m_arbiterAI, request->repository_path(), request->model());
+            m_globalCodebaseManager->addCodebase(request->codebase_name(), std::move(newCodebase));
+        }
         response->set_success(true);
         response->set_message("Repository indexed successfully.");
         return grpc::Status::OK;
     }
-    catch (const std::exception& e)
+    catch(const std::exception &e)
     {
         response->set_success(false);
         response->set_message(e.what());
@@ -97,13 +130,12 @@ grpc::Status Service::ParseFile(
 {
     try
     {
-        // For now, we just check if parsing is successful without storing the result.
-        // This can be expanded later.
-        auto chunks = m_codebaseManager->getCodeParser()->parse(request->file_path(), request->content());
+        auto chunks=m_codeParser->parse(request->file_path(), request->content());
+
         response->set_success(!chunks.empty());
         return grpc::Status::OK;
     }
-    catch (const std::exception &e)
+    catch(const std::exception &e)
     {
         response->set_success(false);
         return grpc::Status(grpc::StatusCode::INTERNAL, e.what());

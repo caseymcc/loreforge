@@ -50,6 +50,45 @@ graph TD
     G --> F
 ```
 
+### 3.1. Multi-Codebase Architecture
+
+To support multiple repositories, a `GlobalCodebaseManager` will be introduced. This component will manage multiple `CodebaseManager` instances, each responsible for a single repository. The `GlobalCodebaseManager` will aggregate the data from all `CodebaseManager` instances and provide a unified interface for searching across all repositories.
+
+```mermaid
+graph TD
+    subgraph "MCP Client"
+        A[User Query]
+    end
+
+    subgraph "LoreForge MCP Server"
+        B[MCP Server API - gRPC]
+        C[LLM Query Engine - arbiterAI]
+        H[GlobalCodebaseManager]
+        D[Vector Database - Faiss]
+        E[Embedding Generator - arbiterAI]
+        F[Code Parser & AST Analysis - tree-sitter / Clang]
+    end
+    
+    subgraph "Codebases"
+        G1[Repo 1]
+        G2[Repo 2]
+        G3[Repo N]
+    end
+
+    A -- "gRPC Calls" --> B
+    B --> C
+    C --> H
+    H -- "Similarity Search" --> D
+    H -- "Manages" --> G1
+    H -- "Manages" --> G2
+    H -- "Manages" --> G3
+    F --> E
+    E --> D
+    G1 --> F
+    G2 --> F
+    G3 --> F
+```
+
 ## 4\. Development Roadmap
 
 A phased approach to development using a C++ toolchain, incorporating insights on how to best utilize the chosen tools.
@@ -98,7 +137,7 @@ This phase focuses on establishing the fundamental C++ parsing capabilities and 
 
 -----
 
-### Phase 2: LLM Integration & Querying
+### Phase 2: LLM Integration & Querying - Complete
 
 This phase focuses on enabling natural language querying of the codebase by integrating the LLM with the retrieval system.
 
@@ -106,17 +145,17 @@ This phase focuses on enabling natural language querying of the codebase by inte
       - [x] **Dependency on arbiterAI Phase 1 (Core Library Enhancement):** `arbiterAI` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
       - [x] **Dependency on arbiterAI Phase 2 (API and Feature Expansion):**
           - [x] `arbiterAI::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.
-          - [ ] Full streaming support in `arbiterAI`'s `streamingCompletion` function across all providers will be beneficial for `LoreForge` to provide real-time responses for longer LLM interactions.
-          - [ ] `CompletionRequest` needs to include a comprehensive set of parameters (e.g., `top_p`, `stop sequences`, `temperature`) so `LoreForge` can finely tune LLM behavior.
+          - [x] Full streaming support in `arbiterAI`'s `streamingCompletion` function across all providers will be beneficial for `LoreForge` to provide real-time responses for longer LLM interactions.
+          - [x] `CompletionRequest` needs to include a comprehensive set of parameters (e.g., `top_p`, `stop sequences`, `temperature`) so `LoreForge` can finely tune LLM behavior.
   - [x] Create a `CodeParser` class to abstract away the tree-sitter logic and provide a clean interface for parsing different languages.
   - [x] Define new gRPC RPCs in the `.proto` file for querying, e.g., `QueryCodebase(QueryRequest) returns (QueryResponse)`.
   - [x] Integrate the Faiss library into the project using vcpkg.
   - [x] Create a query function within the gRPC server that:
-      - [ ] Takes a natural language query (received via gRPC).
-      - [ ] Generates an embedding for the query using **arbiterAI**'s `embedding()` function.
-      - [ ] Retrieves the top N most similar code chunks from Faiss.
-      - [ ] Formats a prompt containing the query and the retrieved code.
-      - [ ] Sends the prompt to the LLM via the **arbiterAI** library and returns the result (via gRPC).
+      - [x] Takes a natural language query (received via gRPC).
+      - [x] Generates an embedding for the query using **arbiterAI**'s `embedding()` function.
+      - [x] Retrieves the top N most similar code chunks from Faiss.
+      - [x] Formats a prompt containing the query and the retrieved code.
+      - [x] Sends the prompt to the LLM via the **arbiterAI** library and returns the result (via gRPC).
       - [x] Implement configuration management system:
           - [x] Create JSON schema for model configurations
           - [x] Add schema validation to ModelManager
@@ -128,20 +167,20 @@ This phase focuses on enabling natural language querying of the codebase by inte
 
 -----
 
-### Phase 3: Embeddings & Vector Storage
+### Phase 3: Embeddings & Vector Storage - Complete
 
 This phase integrates the embedding generation process and sets up Faiss for efficient storage and retrieval.
 
-  - [ ] Use the **arbiterAI** library to handle the loading of an embedding model.
-      - [ ] **Dependency on arbiterAI Phase 2 (Embeddings API):** This is a direct dependency on `arbiterAI::embedding()`.
-  - [ ] Modify the parsing application/server logic to:
-      - [ ] Chunk code into meaningful semantic units (e.g., function bodies, class definitions) based on tree-sitter's AST output.
-      - [ ] Generate embeddings for each function/class using **arbiterAI**.
-      - [ ] Store these embeddings in a Faiss index, associating them with their source code, file path, and any extracted metadata (function names, potentially derived call relationships if possible with tree-sitter).
-      - [ ] **Key Consideration for Faiss**: Implement custom logic for data persistence (saving/loading the Faiss index to disk) and consider strategies for managing large indices that might exceed RAM. Faiss primarily focuses on similarity search, so database-like features will need to be custom-built around it.
-  - [ ] Provide a caching system to be maintained on the filesystem:
-      - [ ] Write cache to filesystem (e.g., serialized parsed data, embeddings, Faiss index snapshots).
-      - [ ] Implement asynchronous updates to watch files that have been processed for changes and update the cache and Faiss index as needed.
+  - [x] Use the **arbiterAI** library to handle the loading of an embedding model.
+      - [x] **Dependency on arbiterAI Phase 2 (Embeddings API):** This is a direct dependency on `arbiterAI::embedding()`.
+  - [x] Modify the parsing application/server logic to:
+      - [x] Chunk code into meaningful semantic units (e.g., function bodies, class definitions) based on tree-sitter's AST output.
+      - [x] Generate embeddings for each function/class using **arbiterAI**.
+      - [x] Store these embeddings in a Faiss index, associating them with their source code, file path, and any extracted metadata (function names, potentially derived call relationships if possible with tree-sitter).
+      - [x] **Key Consideration for Faiss**: Implement custom logic for data persistence (saving/loading the Faiss index to disk) and consider strategies for managing large indices that might exceed RAM. Faiss primarily focuses on similarity search, so database-like features will need to be custom-built around it.
+  - [x] Provide a caching system to be maintained on the filesystem:
+      - [x] Write cache to filesystem (e.g., serialized parsed data, embeddings, Faiss index snapshots).
+      - [x] Implement asynchronous updates to watch files that have been processed for changes and update the cache and Faiss index as needed.
 
 -----
 
@@ -190,3 +229,15 @@ This phase addresses the limitations of `tree-sitter` for full semantic analysis
       - [ ] Expand the test suite to validate the accuracy of extracted function signatures, call graphs, and other semantic information across different languages and code complexities.
       - [ ] Test the RAG system's ability to answer more complex semantic queries that rely on this richer data (e.g., "Explain the purpose of this template function and how it's used throughout the codebase," "Show me all implementations of this interface," "Trace the data flow for this variable").
 
+-----
+
+### Phase 6: Multi-Repo Support
+
+This phase focuses on extending the server to handle multiple repositories simultaneously.
+
+  - [ ] **Design `GlobalCodebaseManager`**: Create a new class that manages a collection of `CodebaseManager` instances, one for each repository.
+  - [ ] **Unified Faiss Index**: Modify the indexing process to combine vectors from all `CodebaseManager` instances into a single, global Faiss index.
+  - [ ] **ID Mapping**: Implement a robust ID mapping scheme to trace a vector in the global index back to its specific `CodebaseManager`, file, and chunk. This will likely involve creating a new mapping structure that incorporates a repository identifier.
+  - [ ] **Update gRPC Service**: Modify the gRPC service to accept a repository identifier in requests, allowing clients to specify which repository to query. Also, provide an option to query across all repositories.
+  - [ ] **Refactor `Service` Class**: Update the `Service` class to use the `GlobalCodebaseManager` instead of a single `CodebaseManager`.
+  - [ ] **Testing**: Create comprehensive tests to validate multi-repository functionality, including adding/removing repositories, querying specific repositories, and performing global searches.

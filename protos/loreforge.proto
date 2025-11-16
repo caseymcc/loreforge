@@ -42,6 +42,7 @@ message ParseFileResponse {
 message QueryRequest {
   string query = 1;
   string model = 2;
+  string codebase_name = 3;
 }
 
 // The response message for the QueryCodebase RPC.
@@ -53,6 +54,7 @@ message QueryResponse {
 message IndexRepositoryRequest {
   string repository_path = 1;
   string model = 2;
+  string codebase_name = 3;
 }
 
 // The response message for the IndexRepository RPC.

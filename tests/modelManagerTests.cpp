@@ -9,7 +9,7 @@ protected:
     {
         // Initialize with test configs
         std::vector<std::filesystem::path> configPaths = {
-            "src/arbiterAI/configs/defaults"
+            "/app/src/arbiterAI_config/configs/defaults"
         };
         arbiterAI::ModelManager::instance().initialize(configPaths);
     }

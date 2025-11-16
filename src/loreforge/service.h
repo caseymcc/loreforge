@@ -1,8 +1,7 @@
 #ifndef _loreforge_service_h
 #define _loreforge_service_h
 
-#include "loreforge/codeParser.h"
-#include "loreforge/codebaseManager.h"
+#include "loreforge/globalCodebaseManager.h"
 #include "protos/loreforge.grpc.pb.h"
 
 #include <grpcpp/grpcpp.h>
@@ -11,15 +10,15 @@
 namespace loreforge
 {
 
-class CodebaseManager;
+class GlobalCodebaseManager;
 
-class Service final : public loreforge::LoreForge::Service
+class Service : public loreforge::LoreForge::Service
 {
 public:
-    Service();
+    Service(const std::string& repositoryPath = "", const std::string& model = "");
     ~Service();
 
-    loreforge::CodebaseManager *getCodebaseManager();
+    loreforge::GlobalCodebaseManager *getGlobalCodebaseManager();
 
 private:
     grpc::Status QueryCodebase(grpc::ServerContext *context,
@@ -38,8 +37,9 @@ private:
         grpc::ServerContext *context, const ParseFileRequest *request,
         ParseFileResponse *response) override;
 
-    std::unique_ptr<loreforge::CodebaseManager> m_codebaseManager;
-    std::shared_ptr<arbiterAI::arbiterAI> m_arbiterAI;
+    std::unique_ptr<loreforge::GlobalCodebaseManager> m_globalCodebaseManager;
+    std::shared_ptr<CodeParser> m_codeParser;
+    std::shared_ptr<arbiterAI::ArbiterAI> m_arbiterAI;
 };
 
 }// namespace loreforge

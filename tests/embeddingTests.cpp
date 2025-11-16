@@ -93,12 +93,12 @@ TEST_F(EmbeddingTest, EmbeddingGeneration)
     SKIP_IF_NO_MODEL(TEST_MODEL);
 
     auto parser=std::make_shared<loreforge::CodeParser>();
-    auto arbiter=std::make_shared<arbiterAI::arbiterAI>();
+    auto arbiter = std::make_shared<arbiterAI::ArbiterAI>();
     arbiter->initialize({ "src/arbiterAI/configs/defaults" });
-    auto manager=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
+    auto manager = std::make_shared<loreforge::CodebaseManager>();
+    manager->init(parser, arbiter, "tests/cpp_test_files", TEST_MODEL);
 
-    std::string test_dir="tests/cpp_test_files";
-    manager->processDirectory(test_dir, TEST_MODEL);
+    manager->generateEmbeddings();
 
     EXPECT_TRUE(manager->isReady());
     EXPECT_EQ(manager->getVectorCount(), 3);
@@ -109,17 +109,18 @@ TEST_F(EmbeddingTest, VectorStorage_SaveAndLoad)
     SKIP_IF_NO_MODEL(TEST_MODEL);
 
     auto parser=std::make_shared<loreforge::CodeParser>();
-    auto arbiter=std::make_shared<arbiterAI::arbiterAI>();
+    auto arbiter = std::make_shared<arbiterAI::ArbiterAI>();
     arbiter->initialize({ "src/arbiterAI/configs/defaults" });
-    auto manager1=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
+    auto manager1 = std::make_shared<loreforge::CodebaseManager>();
+    manager1->init(parser, arbiter, "tests/cpp_test_files", TEST_MODEL);
 
-    std::string test_dir="tests/cpp_test_files";
-    manager1->processDirectory(test_dir, TEST_MODEL);
+    manager1->generateEmbeddings();
 
     std::string index_path="test_index.faiss";
     manager1->saveIndex(index_path);
 
-    auto manager2=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
+    auto manager2 = std::make_shared<loreforge::CodebaseManager>();
+    manager2->init(parser, arbiter, "", "");
     EXPECT_TRUE(manager2->loadIndex(index_path));
     EXPECT_TRUE(manager2->isReady());
     EXPECT_EQ(manager2->getVectorCount(), 3);
@@ -130,12 +131,12 @@ TEST_F(EmbeddingTest, EndToEndPipeline)
     SKIP_IF_NO_MODEL(TEST_MODEL);
 
     auto parser=std::make_shared<loreforge::CodeParser>();
-    auto arbiter=std::make_shared<arbiterAI::arbiterAI>();
+    auto arbiter = std::make_shared<arbiterAI::ArbiterAI>();
     arbiter->initialize({ "src/arbiterAI/configs/defaults" });
-    auto manager=std::make_shared<loreforge::CodebaseManager>(parser, arbiter);
+    auto manager = std::make_shared<loreforge::CodebaseManager>();
+    manager->init(parser, arbiter, "tests/cpp_test_files", TEST_MODEL);
 
-    std::string test_dir="tests/cpp_test_files";
-    manager->processDirectory(test_dir, TEST_MODEL);
+    manager->generateEmbeddings();
 
     std::vector<loreforge::CodeChunk> results=manager->search("myFunction", "hermes-2-pro-mistral-7b.Q4_K_M.gguf", 1);
 
@@ -147,7 +148,7 @@ TEST_F(EmbeddingTest, EndToEndPipeline)
 TEST_F(EmbeddingTest, gRPC_SimilaritySearch)
 {
     // Setup server
-    loreforge::Service service;
+    loreforge::Service service("tests/cpp_test_files", TEST_MODEL);
     grpc::ServerBuilder builder;
     const std::string serverAddress("0.0.0.0:50051");
     const std::string modelName=TEST_MODEL;
@@ -183,7 +184,7 @@ TEST_F(EmbeddingTest, gRPC_SimilaritySearch)
     try
     {
         // Process test files
-        service.getCodebaseManager()->processDirectory("tests/cpp_test_files", modelName);
+        service.getGlobalCodebaseManager()->getCodebase("default")->generateEmbeddings();
 
         // Setup client
         auto channel=grpc::CreateChannel(serverAddress, grpc::InsecureChannelCredentials());
@@ -243,10 +244,10 @@ TEST_F(EmbeddingTest, gRPC_SimilaritySearch)
 
 TEST_F(EmbeddingTest, ConfigValidation)
 {
-    auto hermes = std::make_shared<arbiterAI::arbiterAI>();
+    auto hermes = std::make_shared<arbiterAI::ArbiterAI>();
     
     // Test valid config
-    EXPECT_EQ(hermes->initialize({ "src/arbiterAI/configs/defaults" }), arbiterAI::ErrorCode::Success);
+    EXPECT_EQ(hermes->initialize({ "/app/src/arbiterAI_config/configs/defaults" }), arbiterAI::ErrorCode::Success);
     
     // Test invalid config path
     EXPECT_NE(hermes->initialize({ "invalid/config/path" }), arbiterAI::ErrorCode::Success);

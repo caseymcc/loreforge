@@ -29,12 +29,22 @@ void test_parse_file(
     const std::string &content,
     bool expected_success)
 {
+    IndexRepositoryRequest indexRequest;
+    indexRequest.set_codebase_name("default");
+    IndexRepositoryResponse indexResponse;
+    ClientContext indexContext;
+    Status indexStatus=stub.IndexRepository(&indexContext, indexRequest, &indexResponse);
+    ASSERT_TRUE(indexStatus.ok());
+    ASSERT_TRUE(indexResponse.success());
+
     ParseFileRequest request;
+
     request.set_file_path(file_path);
     request.set_content(content);
 
     ParseFileResponse response;
     ClientContext context;
+    
     Status status=stub.ParseFile(&context, request, &response);
 
     ASSERT_TRUE(status.ok())<<"RPC failed: "<<status.error_code()<<": "<<status.error_message();
@@ -75,4 +85,79 @@ TEST_F(LoreForgeTest, ParseFile_InvalidPython)
 TEST_F(LoreForgeTest, ParseFile_UnsupportedFileType)
 {
     test_parse_file(*stub, "sample.txt", "this is a plain text file", false);
+}
+
+TEST_F(LoreForgeTest, MultiRepo)
+{
+    // Index first repo
+    IndexRepositoryRequest request1;
+    request1.set_repository_path("tests/cpp_test_files");
+    request1.set_model("all-MiniLM-L6-v2");
+    request1.set_codebase_name("repo1");
+    IndexRepositoryResponse response1;
+    ClientContext context1;
+    Status status1=stub->IndexRepository(&context1, request1, &response1);
+    ASSERT_TRUE(status1.ok());
+    ASSERT_TRUE(response1.success());
+
+    // Index second repo
+    IndexRepositoryRequest request2;
+    request2.set_repository_path("tests/python_test_files");
+    request2.set_model("all-MiniLM-L6-v2");
+    request2.set_codebase_name("repo2");
+    IndexRepositoryResponse response2;
+    ClientContext context2;
+    Status status2=stub->IndexRepository(&context2, request2, &response2);
+    ASSERT_TRUE(status2.ok());
+    ASSERT_TRUE(response2.success());
+
+    // Query first repo
+    QueryRequest queryRequest1;
+    queryRequest1.set_query("main function");
+    queryRequest1.set_model("all-MiniLM-L6-v2");
+    queryRequest1.set_codebase_name("repo1");
+    ClientContext queryContext1;
+    auto stream1=stub->QueryCodebase(&queryContext1, queryRequest1);
+    QueryResponse queryResponse1;
+    std::string full_response1;
+    while(stream1->Read(&queryResponse1))
+    {
+        full_response1+=queryResponse1.response_chunk();
+    }
+    Status stream_status1=stream1->Finish();
+    ASSERT_TRUE(stream_status1.ok());
+    ASSERT_NE(full_response1.find("main"), std::string::npos);
+
+    // Query second repo
+    QueryRequest queryRequest2;
+    queryRequest2.set_query("main function");
+    queryRequest2.set_model("all-MiniLM-L6-v2");
+    queryRequest2.set_codebase_name("repo2");
+    ClientContext queryContext2;
+    auto stream2=stub->QueryCodebase(&queryContext2, queryRequest2);
+    QueryResponse queryResponse2;
+    std::string full_response2;
+    while(stream2->Read(&queryResponse2))
+    {
+        full_response2+=queryResponse2.response_chunk();
+    }
+    Status stream_status2=stream2->Finish();
+    ASSERT_TRUE(stream_status2.ok());
+    ASSERT_NE(full_response2.find("main"), std::string::npos);
+
+    // Query all repos
+    QueryRequest queryRequestAll;
+    queryRequestAll.set_query("main function");
+    queryRequestAll.set_model("all-MiniLM-L6-v2");
+    ClientContext queryContextAll;
+    auto streamAll=stub->QueryCodebase(&queryContextAll, queryRequestAll);
+    QueryResponse queryResponseAll;
+    std::string full_responseAll;
+    while(streamAll->Read(&queryResponseAll))
+    {
+        full_responseAll+=queryResponseAll.response_chunk();
+    }
+    Status stream_statusAll=streamAll->Finish();
+    ASSERT_TRUE(stream_statusAll.ok());
+    ASSERT_NE(full_responseAll.find("main"), std::string::npos);
 }

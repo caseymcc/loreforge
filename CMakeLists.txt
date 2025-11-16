@@ -33,6 +33,7 @@ add_executable(loreforge
     src/loreforge/service.cpp
     src/loreforge/codeParser.cpp
     src/loreforge/codebaseManager.cpp
+    src/loreforge/globalCodebaseManager.cpp
     $<TARGET_OBJECTS:loreforge_grpc_obj>
 )
 set_target_properties(loreforge PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -69,6 +70,7 @@ add_executable(loreforge_tests
     src/loreforge/service.cpp
     src/loreforge/codeParser.cpp
     src/loreforge/codebaseManager.cpp
+    src/loreforge/globalCodebaseManager.cpp
     $<TARGET_OBJECTS:loreforge_grpc_obj>
 )
 
