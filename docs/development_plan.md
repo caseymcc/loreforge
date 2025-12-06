@@ -1,8 +1,8 @@
-# Project Plan: "LoreForge" Model Context Protocol (MCP) Server
+# Project Plan: "LoreForge" Library and Model Context Protocol (MCP) Server
 
 ## 1\. Project Goal
 
-To create an MCP server that provides deep, context-specific insights into C++ codebases for AI agents. The server will parse C++ code to understand its intricate structure, extract rich code intelligence (e.g., function signatures, call graphs), generate embeddings for semantic search, and utilize an LLM to answer complex questions about functionality and call graphs.
+Library that can parse multiple language code bases (C++, python, typescript, javascript, etc) to understand its intricate structure, extract rich code intelligence (e.g., function signatures, call graphs), generate embeddings for semantic search, and utilize an LLM to answer complex questions about functionality and call graphs as well as overall codebase structure. The repo also includes a standalone MCP server that can be used to host the library and provide a REST API for clients to interact with the library.
 
 ## 2\. Core Components & Technology Stack
 
@@ -25,12 +25,7 @@ Here is a diagram illustrating how the components will interact, reflecting the 
 
 ```mermaid
 graph TD
-    subgraph "MCP Client"
-        A[User Query]
-    end
-
-    subgraph "LoreForge MCP Server"
-        B[MCP Server API - gRPC]
+    subgraph "LoreForge Library"
         C[LLM Query Engine - arbiterAI]
         D[Vector Database - Faiss]
         E[Embedding Generator - arbiterAI]
@@ -56,12 +51,7 @@ To support multiple repositories, a `GlobalCodebaseManager` will be introduced. 
 
 ```mermaid
 graph TD
-    subgraph "MCP Client"
-        A[User Query]
-    end
-
-    subgraph "LoreForge MCP Server"
-        B[MCP Server API - gRPC]
+    subgraph "LoreForge Library"
         C[LLM Query Engine - arbiterAI]
         H[GlobalCodebaseManager]
         D[Vector Database - Faiss]
