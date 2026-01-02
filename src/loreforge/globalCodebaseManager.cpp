@@ -62,8 +62,8 @@ std::vector<CodeChunk> GlobalCodebaseManager::search(const std::string& query, c
     m_faissIndex->search(1, embedding.data(), k, distances.data(), labels.data());
 
     std::vector<CodeChunk> results;
-    for (faiss::idx_t label : labels)
-    {
+    for (size_t i = 0; i < labels.size(); ++i) {
+        faiss::idx_t label = labels[i];
         if (label < 0) continue;
         const auto& index = m_chunkFileIndexes[label];
         auto codebase = getCodebase(index.codebaseName);
@@ -75,7 +75,9 @@ std::vector<CodeChunk> GlobalCodebaseManager::search(const std::string& query, c
                 const auto& codeFile = codeFiles[index.fileIndex];
                 if (index.chunkIndex < codeFile.chunks.size())
                 {
-                    results.push_back(codeFile.chunks[index.chunkIndex]);
+                    auto chunk = codeFile.chunks[index.chunkIndex];
+                    chunk.score = distances[i];
+                    results.push_back(chunk);
                 }
             }
         }

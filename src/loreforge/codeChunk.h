@@ -22,6 +22,7 @@ struct CodeChunk
     std::string type;       // e.g., "function_definition", "class_specifier"
     std::string chunkId;    // Unique ID for this chunk (e.g., hash of file path, start line, identifier)
     faiss::idx_t faissId = -1; // FAISS internal ID, -1 if not yet indexed
+    float score = 0.0f;     // Similarity score (distance)
 };
 
 } // namespace loreforge

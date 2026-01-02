@@ -118,6 +118,73 @@ private:
                             {"required", {"file_path"}}
                         }}
                     }
+                    ,
+                    {
+                        "name", "analyze_function",
+                        "description", "Analyze a function to get its signature and details",
+                        "inputSchema", {
+                            {"type", "object"},
+                            {"properties", {
+                                {"file_path", {
+                                    {"type", "string"},
+                                    {"description", "Path to the file containing the function"}
+                                }},
+                                {"function_name", {
+                                    {"type", "string"},
+                                    {"description", "Name of the function to analyze"}
+                                }}
+                            }},
+                            {"required", {"file_path", "function_name"}}
+                        }
+                    },
+                    {
+                        "name", "find_similar",
+                        "description", "Find code similar to a query",
+                        "inputSchema", {
+                            {"type", "object"},
+                            {"properties", {
+                                {"query", {
+                                    {"type", "string"},
+                                    {"description", "Query text or code snippet"}
+                                }},
+                                {"model", {
+                                    {"type", "string"},
+                                    {"description", "Embedding model to use"}
+                                }},
+                                {"codebase_name", {
+                                    {"type", "string"},
+                                    {"description", "Specific codebase to search"}
+                                }},
+                                {"top_k", {
+                                    {"type", "integer"},
+                                    {"description", "Number of results to return"}
+                                }}
+                            }},
+                            {"required", {"query"}}
+                        }
+                    },
+                    {
+                        "name", "get_call_graph",
+                        "description", "Get the call graph for a function",
+                        "inputSchema", {
+                            {"type", "object"},
+                            {"properties", {
+                                {"file_path", {
+                                    {"type", "string"},
+                                    {"description", "Path to the file"}
+                                }},
+                                {"function_name", {
+                                    {"type", "string"},
+                                    {"description", "Root function name"}
+                                }},
+                                {"depth", {
+                                    {"type", "integer"},
+                                    {"description", "Depth of the call graph"}
+                                }}
+                            }},
+                            {"required", {"file_path", "function_name"}}
+                        }
+                    }
                 }}
             };
         }
@@ -133,6 +200,15 @@ private:
             }
             else if (toolName == "parse_file") {
                 response["result"] = parseFile(arguments);
+            }
+            else if (toolName == "analyze_function") {
+                response["result"] = analyzeFunction(arguments);
+            }
+            else if (toolName == "find_similar") {
+                response["result"] = findSimilar(arguments);
+            }
+            else if (toolName == "get_call_graph") {
+                response["result"] = getCallGraph(arguments);
             }
             else {
                 response["error"] = {
@@ -188,18 +264,105 @@ private:
     }
 
     json parseFile(const json& arguments) {
-        std::string filePath = arguments.value("file_path", "");
-        std::string content = arguments.value("content", "");
-        
-        // This would need to be implemented using the loreforge service
-        return {
-            {"content", {
-                {
+        loreforge::ParseFileRequest request;
+        request.set_file_path(arguments.value("file_path", ""));
+        if (arguments.contains("content")) request.set_content(arguments["content"]);
+
+        loreforge::ParseFileResponse response;
+        grpc::Status status = m_service.ParseFile(nullptr, &request, &response);
+
+        if (!status.ok()) {
+            return {
+                {"isError", true},
+                {"content", {{
                     {"type", "text"},
-                    {"text", "File parsing would be implemented here"}
-                }
-            }}
+                    {"text", "RPC failed: " + status.error_message()}
+                }}}
+            };
+        }
+
+        return {
+            {"content", {{
+                {"type", "text"},
+                {"text", response.success() ? "File parsed successfully." : "Failed to parse file."}
+            }}}
         };
+    }
+
+    json analyzeFunction(const json& arguments) {
+        loreforge::AnalyzeFunctionRequest request;
+        request.set_file_path(arguments.value("file_path", ""));
+        request.set_function_name(arguments.value("function_name", ""));
+
+        loreforge::AnalyzeFunctionResponse response;
+        grpc::Status status = m_service.AnalyzeFunction(nullptr, &request, &response);
+
+        if (!status.ok()) {
+             return {{"isError", true}, {"content", {{{"type", "text"}, {"text", status.error_message()}}}}};
+        }
+
+        std::stringstream ss;
+        if (response.found()) {
+            ss << "Signature: " << response.signature() << "\n";
+            ss << "Return Type: " << response.return_type() << "\n";
+            ss << "Parameters: ";
+            for (const auto& param : response.parameters()) ss << param << ", ";
+            ss << "\n";
+        } else {
+            ss << "Function not found.\n";
+        }
+
+        return {{"content", {{{"type", "text"}, {"text", ss.str()}}}}};
+    }
+
+    json findSimilar(const json& arguments) {
+        loreforge::FindSimilarCodeRequest request;
+        request.set_query(arguments.value("query", ""));
+        if (arguments.contains("model")) request.set_model(arguments["model"]);
+        if (arguments.contains("codebase_name")) request.set_codebase_name(arguments["codebase_name"]);
+        if (arguments.contains("top_k")) request.set_top_k(arguments["top_k"]);
+
+        loreforge::FindSimilarCodeResponse response;
+        grpc::Status status = m_service.FindSimilarCode(nullptr, &request, &response);
+
+        if (!status.ok()) {
+             return {{"isError", true}, {"content", {{{"type", "text"}, {"text", status.error_message()}}}}};
+        }
+
+        std::stringstream ss;
+        for (const auto& chunk : response.similar_chunks()) {
+            ss << "File: " << chunk.file_path() << " (" << chunk.start_line() << "-" << chunk.end_line() << ")\n";
+            ss << "Score: " << chunk.score() << "\n";
+            ss << "Content:\n" << chunk.content() << "\n\n";
+        }
+
+        return {{"content", {{{"type", "text"}, {"text", ss.str()}}}}};
+    }
+
+    json getCallGraph(const json& arguments) {
+        loreforge::GetCallGraphRequest request;
+        request.set_file_path(arguments.value("file_path", ""));
+        request.set_function_name(arguments.value("function_name", ""));
+        
+        loreforge::GetCallGraphResponse response;
+        grpc::Status status = m_service.GetCallGraph(nullptr, &request, &response);
+
+        if (!status.ok()) {
+             return {{"isError", true}, {"content", {{{"type", "text"}, {"text", status.error_message()}}}}};
+        }
+
+        std::stringstream ss;
+        if (response.found()) {
+             const auto& root = response.root();
+             ss << "Root: " << root.function_name() << "\n";
+             ss << "Callees:\n";
+             for (const auto& callee : root.callees()) {
+                 ss << "  - " << callee.function_name() << "\n";
+             }
+        } else {
+            ss << "Graph not found.\n";
+        }
+         return {{"content", {{{"type", "text"}, {"text", ss.str()}}}}};
     }
 
     loreforge::Service m_service;

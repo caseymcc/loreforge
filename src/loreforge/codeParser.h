@@ -56,6 +56,16 @@ public:
     void setEmbeddingModel(std::shared_ptr<arbiterAI::ArbiterAI> model);
     std::shared_ptr<arbiterAI::ArbiterAI> getEmbeddingModel();
 
+    struct FunctionSignature {
+        std::string signature;
+        std::string returnType;
+        std::vector<std::string> parameters;
+        bool found = false;
+    };
+
+    FunctionSignature extractFunctionSignature(const std::string& filePath, const std::string& functionName);
+    std::vector<std::string> findCallees(const std::string& filePath, const std::string& functionName);
+
 private:
     /**
      * @brief Get tree-sitter language parser for file type

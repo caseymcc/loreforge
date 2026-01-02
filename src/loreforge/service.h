@@ -20,7 +20,6 @@ public:
 
     loreforge::GlobalCodebaseManager *getGlobalCodebaseManager();
 
-private:
     grpc::Status QueryCodebase(grpc::ServerContext *context,
         const QueryRequest *request,
         grpc::ServerWriter<QueryResponse> *writer) override;
@@ -37,6 +36,19 @@ private:
         grpc::ServerContext *context, const ParseFileRequest *request,
         ParseFileResponse *response) override;
 
+    grpc::Status AnalyzeFunction(
+        grpc::ServerContext *context, const AnalyzeFunctionRequest *request,
+        AnalyzeFunctionResponse *response) override;
+
+    grpc::Status FindSimilarCode(
+        grpc::ServerContext *context, const FindSimilarCodeRequest *request,
+        FindSimilarCodeResponse *response) override;
+
+    grpc::Status GetCallGraph(
+        grpc::ServerContext *context, const GetCallGraphRequest *request,
+        GetCallGraphResponse *response) override;
+
+private:
     std::unique_ptr<loreforge::GlobalCodebaseManager> m_globalCodebaseManager;
     std::shared_ptr<CodeParser> m_codeParser;
     std::shared_ptr<arbiterAI::ArbiterAI> m_arbiterAI;

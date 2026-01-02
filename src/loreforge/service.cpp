@@ -5,6 +5,7 @@
 #include "arbiterAI/arbiterAI.h"
 
 #include <sstream>
+#include <iostream>
 
 namespace loreforge
 {
@@ -101,7 +102,12 @@ grpc::Status Service::IndexRepository(
         {
             auto codeParser=std::make_shared<CodeParser>();
             auto newCodebase=std::make_unique<CodebaseManager>();
-            newCodebase->init(codeParser, m_arbiterAI, request->repository_path(), request->model());
+            if(!newCodebase->init(codeParser, m_arbiterAI, request->repository_path(), request->model()))
+            {
+                response->set_success(false);
+                response->set_message("Failed to initialize codebase: invalid path or model");
+                return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "Failed to initialize codebase");
+            }
             m_globalCodebaseManager->addCodebase(request->codebase_name(), std::move(newCodebase));
         }
         response->set_success(true);
@@ -130,7 +136,9 @@ grpc::Status Service::ParseFile(
 {
     try
     {
+        std::cout << "DEBUG: Entering Service::ParseFile" << std::endl;
         auto chunks=m_codeParser->parse(request->file_path(), request->content());
+        std::cout << "DEBUG: Service::ParseFile returned " << chunks.size() << " chunks" << std::endl;
 
         response->set_success(!chunks.empty());
         return grpc::Status::OK;
@@ -142,4 +150,61 @@ grpc::Status Service::ParseFile(
     }
 }
 
-}// namespace loreforge
+grpc::Status Service::AnalyzeFunction(
+    grpc::ServerContext *context, const AnalyzeFunctionRequest *request,
+    AnalyzeFunctionResponse *response)
+{
+    auto result = m_codeParser->extractFunctionSignature(request->file_path(), request->function_name());
+    response->set_found(result.found);
+    if (result.found) {
+        response->set_signature(result.signature);
+        response->set_return_type(result.returnType);
+        for (const auto& param : result.parameters) {
+            response->add_parameters(param);
+        }
+    }
+    return grpc::Status::OK;
+}
+
+grpc::Status Service::FindSimilarCode(
+    grpc::ServerContext *context, const FindSimilarCodeRequest *request,
+    FindSimilarCodeResponse *response)
+{
+    std::vector<CodeChunk> chunks;
+    if (request->codebase_name().empty()) {
+        chunks = m_globalCodebaseManager->search(request->query(), request->model(), request->top_k());
+    } else {
+        chunks = m_globalCodebaseManager->searchInCodebase(request->codebase_name(), request->query(), request->model(), request->top_k());
+    }
+
+    for (const auto& chunk : chunks) {
+        auto* protoChunk = response->add_similar_chunks();
+        protoChunk->set_file_path(chunk.filePath);
+        protoChunk->set_start_line(chunk.startLine);
+        protoChunk->set_end_line(chunk.endLine);
+        protoChunk->set_content(chunk.content);
+        protoChunk->set_function_name(chunk.identifier);
+        protoChunk->set_score(chunk.score);
+    }
+    return grpc::Status::OK;
+}
+
+grpc::Status Service::GetCallGraph(
+    grpc::ServerContext *context, const GetCallGraphRequest *request,
+    GetCallGraphResponse *response)
+{
+    auto callees = m_codeParser->findCallees(request->file_path(), request->function_name());
+    
+    response->set_found(true);
+    auto* root = response->mutable_root();
+    root->set_function_name(request->function_name());
+    root->set_file_path(request->file_path());
+    
+    for (const auto& calleeName : callees) {
+        auto* calleeNode = root->add_callees();
+        calleeNode->set_function_name(calleeName);
+    }
+    return grpc::Status::OK;
+}
+
+} // namespace loreforge

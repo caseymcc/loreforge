@@ -303,8 +303,10 @@ std::vector<CodeChunk> CodebaseManager::search(const std::string &query, const s
 
     m_faissIndex->search(1, response.data[0].embedding.data(), k, distances.data(), labels.data());
 
-    for(faiss::idx_t label:labels)
+    for (size_t i = 0; i < labels.size(); ++i)
     {
+        faiss::idx_t label = labels[i];
+        
         if((label < 0) || (label >= m_chunkFileIndexes.size()))
             continue;
 
@@ -316,7 +318,8 @@ std::vector<CodeChunk> CodebaseManager::search(const std::string &query, const s
         if((m_chunkFileIndexes[label].chunkIndex < 0) || (m_chunkFileIndexes[label].chunkIndex >= file.chunks.size()))
             continue;
         
-        CodeChunk &chunk=file.chunks[m_chunkFileIndexes[label].chunkIndex];
+        CodeChunk chunk=file.chunks[m_chunkFileIndexes[label].chunkIndex];
+        chunk.score = distances[i];
 
         results.push_back(chunk);
     }

@@ -26,6 +26,9 @@ if(NOT TARGET arbiterai)
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../arbiterAI/CMakeLists.txt)
         message(STATUS "Using existing arbiterAI from ../arbiterAI")
         add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../arbiterAI ${CMAKE_CURRENT_BINARY_DIR}/arbiterAI)
+    elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/arbiterAI/CMakeLists.txt)
+        message(STATUS "Using existing arbiterAI from src/arbiterAI")
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/arbiterAI ${CMAKE_CURRENT_BINARY_DIR}/arbiterAI)
     else()
         # Fetch arbiterAI from GitHub
         FetchContent_Declare(
