@@ -121,6 +121,7 @@ enable_testing()
 add_executable(loreforge_tests
     tests/main.cpp
     tests/serverTests.cpp
+    tests/serviceUnitTests.cpp
     tests/embeddingTests.cpp
     tests/modelManagerTests.cpp
     $<TARGET_OBJECTS:loreforge_grpc_obj>
