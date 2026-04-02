@@ -63,7 +63,8 @@ fi
 if [ ! "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
     if [ ! "$(docker ps -aq -f status=exited -f name=$CONTAINER_NAME)" ]; then
         echo "Starting new container..."
-        docker run -d -it --name $CONTAINER_NAME -v "$(pwd)":/app -e VCPKG_OVERLAY_TRIPLETS=/app/triplets $IMAGE_NAME
+        VCPKG_CACHE_DIR=${VCPKG_CACHE_PATH:-"$HOME/vcpkg_cache"}
+        docker run -d -it --name $CONTAINER_NAME -v "$(pwd)":/app -v "$(pwd)/models":/models -v "$VCPKG_CACHE_DIR":/vcpkg_cache -e VCPKG_OVERLAY_TRIPLETS=/app/triplets $IMAGE_NAME
     else
         echo "Restarting existing container..."
         docker start $CONTAINER_NAME

@@ -1,8 +1,8 @@
-# Project Plan: "LoreForge" Model Context Protocol (MCP) Server
+# Project Plan: "LoreForge" Library and Model Context Protocol (MCP) Server
 
 ## 1\. Project Goal
 
-To create an MCP server that provides deep, context-specific insights into C++ codebases for AI agents. The server will parse C++ code to understand its intricate structure, extract rich code intelligence (e.g., function signatures, call graphs), generate embeddings for semantic search, and utilize an LLM to answer complex questions about functionality and call graphs.
+Library that can parse multiple language code bases (C++, python, typescript, javascript, etc) to understand its intricate structure, extract rich code intelligence (e.g., function signatures, call graphs), generate embeddings for semantic search, and utilize an LLM to answer complex questions about functionality and call graphs as well as overall codebase structure. The repo also includes a standalone MCP server that can be used to host the library and provide a REST API for clients to interact with the library.
 
 ## 2\. Core Components & Technology Stack
 
@@ -14,9 +14,9 @@ The system will be built using a C++ technology stack, leveraging the chosen too
 | **Package Manager** | Manages project dependencies. | vcpkg | Standard C++ package manager. gRPC and Protocol Buffers can be managed via vcpkg. |
 | **Code Parser & AST Generator** | Traverses source code files, identifies key structures (functions, classes), and extracts their content and metadata. | **tree-sitter** (C++ API) | Tree-sitter provides a robust AST. The challenge will be to extract semantic information robustly using tree-sitter's output, potentially in conjunction with language-specific tools in Phase 5. |
 | **Chunking & AST Analysis** | Breaks down code into meaningful semantic chunks (e.g., functions, methods) for embedding. Analyzes the Abstract Syntax Tree (AST) to build call graphs. | Custom C++ logic using **tree-sitter's output** (and later, deeper semantic tools). | This component is critical to bridge any semantic analysis gaps. Techniques to derive call graph information and precise function signatures from `tree-sitter`'s AST (and later, compiler-grade ASTs) will be developed here. |
-| **Embedding Generator** | Converts code chunks into numerical vector representations (embeddings). | **hermesaxiom** | **hermesaxiom** is in development and included here for development to continue on it. **This is a critical dependency.** |
+| **Embedding Generator** | Converts code chunks into numerical vector representations (embeddings). | **arbiterAI** | **arbiterAI** is in development and included here for development to continue on it. **This is a critical dependency.** |
 | **Vector Database** | Stores the embeddings and allows for efficient similarity searches. | **Faiss** (C++) | Faiss is a high-performance C++ library for similarity search and clustering of dense vectors. It is a fundamental building block. Custom development for data persistence, comprehensive indexing strategies, and distributed deployment will be necessary. |
-| **LLM Query Engine** | Uses a Large Language Model to interpret user queries, synthesize information from retrieved code chunks, and generate natural language descriptions. | **hermesaxiom** (Git Submodule) | **hermesaxiom** remains a core component for LLM interaction. **This is a critical dependency.** |
+| **LLM Query Engine** | Uses a Large Language Model to interpret user queries, synthesize information from retrieved code chunks, and generate natural language descriptions. | **arbiterAI** (Git Submodule) | **arbiterAI** remains a core component for LLM interaction. **This is a critical dependency.** |
 | **Model Selection** | The LLM to power the query engine. | Recommendation: Start with Qwen2.5-Coder-7B-Instruct or DeepSeek-Coder-V2-Lite-Instruct. These models are compatible with GGUF format used by many C++ inference engines. | Good starting point for code-focused LLMs. |
 
 ## 3\. System Architecture
@@ -25,15 +25,10 @@ Here is a diagram illustrating how the components will interact, reflecting the 
 
 ```mermaid
 graph TD
-    subgraph "MCP Client"
-        A[User Query]
-    end
-
-    subgraph "LoreForge MCP Server"
-        B[MCP Server API - gRPC]
-        C[LLM Query Engine - hermesaxiom]
+    subgraph "LoreForge Library"
+        C[LLM Query Engine - arbiterAI]
         D[Vector Database - Faiss]
-        E[Embedding Generator - hermesaxiom]
+        E[Embedding Generator - arbiterAI]
         F[Code Parser & AST Analysis - tree-sitter / Clang]
     end
 
@@ -50,16 +45,49 @@ graph TD
     G --> F
 ```
 
+### 3.1. Multi-Codebase Architecture
+
+To support multiple repositories, a `GlobalCodebaseManager` will be introduced. This component will manage multiple `CodebaseManager` instances, each responsible for a single repository. The `GlobalCodebaseManager` will aggregate the data from all `CodebaseManager` instances and provide a unified interface for searching across all repositories.
+
+```mermaid
+graph TD
+    subgraph "LoreForge Library"
+        C[LLM Query Engine - arbiterAI]
+        H[GlobalCodebaseManager]
+        D[Vector Database - Faiss]
+        E[Embedding Generator - arbiterAI]
+        F[Code Parser & AST Analysis - tree-sitter / Clang]
+    end
+    
+    subgraph "Codebases"
+        G1[Repo 1]
+        G2[Repo 2]
+        G3[Repo N]
+    end
+
+    A -- "gRPC Calls" --> B
+    B --> C
+    C --> H
+    H -- "Similarity Search" --> D
+    H -- "Manages" --> G1
+    H -- "Manages" --> G2
+    H -- "Manages" --> G3
+    F --> E
+    E --> D
+    G1 --> F
+    G2 --> F
+    G3 --> F
+```
+
 ## 4\. Development Roadmap
 
 A phased approach to development using a C++ toolchain, incorporating insights on how to best utilize the chosen tools.
 
-### **Build Environment:** 
+### **Build Environment:**
 All `LoreForge` build, execution, debugging, and testing occurs within a Docker container located at the project root, `Dockerfile`.
 
   * ### Managing the Docker Container
     The runDocker.sh script, located in the project root, manages the Docker container lifecycle.
-
     * `runDocker.sh [command]`: Starts (or creates and starts) the container. If already running, it attaches. If `[command]` are provided, they are executed within the running container via docker exec.
     * `runDocker.sh --stop`: Stops and removes the container.
     * `runDocker.sh --restart`: Restarts an existing container and attaches.
@@ -68,7 +96,7 @@ All `LoreForge` build, execution, debugging, and testing occurs within a Docker 
     Execute build.sh inside the running Docker container from the project root.
     * `build.sh`: Builds the application.
     * `build.sh --rebuild`: Cleans and then builds the application.
-    * `build.sh --rebuild-cmake`: Cleans CMake build directory, re-runs CMake, and then builds.
+    * `build.sh --rebuild-cmake`: Deletes CMake build directory, re-runs CMake, and then builds. Only use if something is wrong with the cmake build, `build.sh` alone will run cmake if any of the cmake files change.
   * ### Running the LoreForge Server
     The runServer.sh script, located in the project root, manages the LoreForge gRPC server. `runServer.sh [options] [command]`
     * `runServer.sh` or `runServer.sh start`: Starts the server.
@@ -78,6 +106,8 @@ All `LoreForge` build, execution, debugging, and testing occurs within a Docker 
     * `runServer.sh --build <type>`: Sets the build type (default: debug).
   * The application binary is located at `build/${OS}_${ARCH}_${BUILD_TYPE}` within the container.
   * When running test make sure to restart the server `runServer.sh` before running the tests
+  * both `build.sh` and `runServer.sh` have to be ran using `runDocker.sh`
+  
 
 -----
 
@@ -97,41 +127,50 @@ This phase focuses on establishing the fundamental C++ parsing capabilities and 
 
 -----
 
-### Phase 2: LLM Integration & Querying
+### Phase 2: LLM Integration & Querying - Complete
 
 This phase focuses on enabling natural language querying of the codebase by integrating the LLM with the retrieval system.
 
-  - [ ] Add **hermesaxiom** to the project as a Git submodule (git@github.com:caseymcc/hermesaxiom.git) and integrate the submodule into the CMake build process. **Focus - hermesaxiom is a submodule and in development, make changes to its repo as needed according to its `docs/development_plan.md` to support `LoreForge`'s needs.**
-      - [ ] **Dependency on hermesaxiom Phase 1 (Core Library Enhancement):** `hermesaxiom` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
-      - [ ] **Dependency on hermesaxiom Phase 2 (API and Feature Expansion):**
-          - [ ] `hermesaxiom::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.
-          - [ ] Full streaming support in `hermesaxiom`'s `streamingCompletion` function across all providers will be beneficial for `LoreForge` to provide real-time responses for longer LLM interactions.
-          - [ ] `CompletionRequest` needs to include a comprehensive set of parameters (e.g., `top_p`, `stop sequences`, `temperature`) so `LoreForge` can finely tune LLM behavior.
-  - [ ] Define new gRPC RPCs in the `.proto` file for querying, e.g., `QueryCodebase(QueryRequest) returns (QueryResponse)`.
-  - [ ] Create a query function within the gRPC server that:
-      - [ ] Takes a natural language query (received via gRPC).
-      - [ ] Generates an embedding for the query using **hermesaxiom**'s `embedding()` function.
-      - [ ] Retrieves the top N most similar code chunks from Faiss.
-      - [ ] Formats a prompt containing the query and the retrieved code.
-      - [ ] Sends the prompt to the LLM via the **hermesaxiom** library and returns the result (via gRPC).
-  - [ ] Provide a caching system to be maintained on the filesystem:
-      - [ ] Write cache to filesystem (e.g., serialized parsed data, embeddings, Faiss index snapshots).
-      - [ ] Implement asynchronous updates to watch files that have been processed for changes and update the cache and Faiss index as needed.
+  - [x] Add **arbiterAI** to the project as a Git submodule (git@github.com:caseymcc/arbiterAI.git) and integrate the submodule into the CMake build process. **Focus - arbiterAI is a submodule and in development, make changes to its repo as needed according to its `src/arbiterAI/docs/development_plan.md` to support `LoreForge`'s needs.**
+      - [x] **Dependency on arbiterAI Phase 1 (Core Library Enhancement):** `arbiterAI` needs its core structure solidified, `ModelManager` refined, and initial providers (like OpenAI) implemented. Unit testing and basic documentation are also crucial here for `LoreForge` to reliably use it.
+      - [x] **Dependency on arbiterAI Phase 2 (API and Feature Expansion):**
+          - [x] `arbiterAI::embedding()` function for generating vector embeddings from text needs to be implemented. This is **critical** for `LoreForge`'s `Embedding Generator`.
+          - [x] Full streaming support in `arbiterAI`'s `streamingCompletion` function across all providers will be beneficial for `LoreForge` to provide real-time responses for longer LLM interactions.
+          - [x] `CompletionRequest` needs to include a comprehensive set of parameters (e.g., `top_p`, `stop sequences`, `temperature`) so `LoreForge` can finely tune LLM behavior.
+  - [x] Create a `CodeParser` class to abstract away the tree-sitter logic and provide a clean interface for parsing different languages.
+  - [x] Define new gRPC RPCs in the `.proto` file for querying, e.g., `QueryCodebase(QueryRequest) returns (QueryResponse)`.
+  - [x] Integrate the Faiss library into the project using vcpkg.
+  - [x] Create a query function within the gRPC server that:
+      - [x] Takes a natural language query (received via gRPC).
+      - [x] Generates an embedding for the query using **arbiterAI**'s `embedding()` function.
+      - [x] Retrieves the top N most similar code chunks from Faiss.
+      - [x] Formats a prompt containing the query and the retrieved code.
+      - [x] Sends the prompt to the LLM via the **arbiterAI** library and returns the result (via gRPC).
+      - [x] Implement configuration management system:
+          - [x] Create JSON schema for model configurations
+          - [x] Add schema validation to ModelManager
+          - [x] Implement version comparison logic
+          - [x] Add backward compatibility handling
+          - [x] Develop model ranking system
+          - [x] Document architecture changes
+          - [x] Create example v2 config files
 
 -----
 
-### Phase 3: Embeddings & Vector Storage
+### Phase 3: Embeddings & Vector Storage - Complete
 
 This phase integrates the embedding generation process and sets up Faiss for efficient storage and retrieval.
 
-  - [ ] Integrate the Faiss library into the project using vcpkg.
-  - [ ] Use the **hermesaxiom** library to handle the loading of an embedding model.
-      - [ ] **Dependency on hermesaxiom Phase 2 (Embeddings API):** This is a direct dependency on `hermesaxiom::embedding()`.
-  - [ ] Modify the parsing application/server logic to:
-      - [ ] Chunk code into meaningful semantic units (e.g., function bodies, class definitions) based on tree-sitter's AST output.
-      - [ ] Generate embeddings for each function/class using **hermesaxiom**.
-      - [ ] Store these embeddings in a Faiss index, associating them with their source code, file path, and any extracted metadata (function names, potentially derived call relationships if possible with tree-sitter).
-      - [ ] **Key Consideration for Faiss**: Implement custom logic for data persistence (saving/loading the Faiss index to disk) and consider strategies for managing large indices that might exceed RAM. Faiss primarily focuses on similarity search, so database-like features will need to be custom-built around it.
+  - [x] Use the **arbiterAI** library to handle the loading of an embedding model.
+      - [x] **Dependency on arbiterAI Phase 2 (Embeddings API):** This is a direct dependency on `arbiterAI::embedding()`.
+  - [x] Modify the parsing application/server logic to:
+      - [x] Chunk code into meaningful semantic units (e.g., function bodies, class definitions) based on tree-sitter's AST output.
+      - [x] Generate embeddings for each function/class using **arbiterAI**.
+      - [x] Store these embeddings in a Faiss index, associating them with their source code, file path, and any extracted metadata (function names, potentially derived call relationships if possible with tree-sitter).
+      - [x] **Key Consideration for Faiss**: Implement custom logic for data persistence (saving/loading the Faiss index to disk) and consider strategies for managing large indices that might exceed RAM. Faiss primarily focuses on similarity search, so database-like features will need to be custom-built around it.
+  - [x] Provide a caching system to be maintained on the filesystem:
+      - [x] Write cache to filesystem (e.g., serialized parsed data, embeddings, Faiss index snapshots).
+      - [x] Implement asynchronous updates to watch files that have been processed for changes and update the cache and Faiss index as needed.
 
 -----
 
@@ -180,3 +219,15 @@ This phase addresses the limitations of `tree-sitter` for full semantic analysis
       - [ ] Expand the test suite to validate the accuracy of extracted function signatures, call graphs, and other semantic information across different languages and code complexities.
       - [ ] Test the RAG system's ability to answer more complex semantic queries that rely on this richer data (e.g., "Explain the purpose of this template function and how it's used throughout the codebase," "Show me all implementations of this interface," "Trace the data flow for this variable").
 
+-----
+
+### Phase 6: Multi-Repo Support
+
+This phase focuses on extending the server to handle multiple repositories simultaneously.
+
+  - [ ] **Design `GlobalCodebaseManager`**: Create a new class that manages a collection of `CodebaseManager` instances, one for each repository.
+  - [ ] **Unified Faiss Index**: Modify the indexing process to combine vectors from all `CodebaseManager` instances into a single, global Faiss index.
+  - [ ] **ID Mapping**: Implement a robust ID mapping scheme to trace a vector in the global index back to its specific `CodebaseManager`, file, and chunk. This will likely involve creating a new mapping structure that incorporates a repository identifier.
+  - [ ] **Update gRPC Service**: Modify the gRPC service to accept a repository identifier in requests, allowing clients to specify which repository to query. Also, provide an option to query across all repositories.
+  - [ ] **Refactor `Service` Class**: Update the `Service` class to use the `GlobalCodebaseManager` instead of a single `CodebaseManager`.
+  - [ ] **Testing**: Create comprehensive tests to validate multi-repository functionality, including adding/removing repositories, querying specific repositories, and performing global searches.

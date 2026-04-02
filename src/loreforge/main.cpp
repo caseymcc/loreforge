@@ -1,100 +1,106 @@
+#include "loreforge/service.h"
+
 #include <iostream>
 #include <memory>
 #include <string>
+#include <csignal>
+#include <atomic>
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-#include "protos/loreforge.grpc.pb.h"
+static std::atomic<bool> g_shutdownRequested{false};
+static grpc::Server *g_serverPtr=nullptr;
 
-#include <tree_sitter/api.h>
-
-// Declare the external C functions for the C++ and Python grammars
-extern "C" TSLanguage* tree_sitter_cpp();
-extern "C" TSLanguage* tree_sitter_python();
-
-using grpc::Server;
-using grpc::ServerBuilder;
-using grpc::ServerContext;
-using grpc::Status;
-using loreforge::HealthCheckRequest;
-using loreforge::HealthCheckResponse;
-using loreforge::LoreForge;
-using loreforge::ParseFileRequest;
-using loreforge::ParseFileResponse;
-
-// Service implementation
-class LoreForgeServiceImpl final : public LoreForge::Service {
-    Status HealthCheck(ServerContext* context, const HealthCheckRequest* request,
-                       HealthCheckResponse* response) override {
-        response->set_status("SERVING");
-        return Status::OK;
+void signalHandler(int signal)
+{
+    g_shutdownRequested.store(true);
+    if(g_serverPtr)
+    {
+        g_serverPtr->Shutdown();
     }
-
-    Status ParseFile(ServerContext* context, const ParseFileRequest* request,
-                     ParseFileResponse* response) override {
-        std::cout << "Received ParseFile request for: " << request->file_path() << std::endl;
-
-        TSParser* parser = ts_parser_new();
-        TSLanguage* language = nullptr;
-
-        std::string filePath = request->file_path();
-        if (filePath.ends_with(".cpp")) {
-            language = tree_sitter_cpp();
-        } else if (filePath.ends_with(".py")) {
-            language = tree_sitter_python();
-        } else {
-            std::cerr << "Unsupported language for file: " << filePath << std::endl;
-            response->set_success(false);
-            ts_parser_delete(parser);
-            return Status::OK;
-        }
-
-        ts_parser_set_language(parser, language);
-
-        std::string content = request->content();
-        TSTree* tree = ts_parser_parse_string(parser, NULL, content.c_str(), content.length());
-        TSNode root_node = ts_tree_root_node(tree);
-
-        // A more reliable way to check for errors is to see if the S-expression string
-        // contains an ERROR node.
-        char* s_expression = ts_node_string(root_node);
-        std::string tree_string(s_expression);
-        free(s_expression);
-
-        // If the tree contains an ERROR node, the parse was not successful.
-        // We also check for a completely null root node.
-        bool success = !ts_node_is_null(root_node) && (tree_string.find("ERROR") == std::string::npos) && (tree_string.find("MISSING") == std::string::npos);
-        response->set_success(success);
-
-        ts_tree_delete(tree);
-        ts_parser_delete(parser);
-
-        return Status::OK;
-    }
-};
-
-void RunServer() {
-    std::string server_address("0.0.0.0:50051");
-    LoreForgeServiceImpl service;
-
-    grpc::EnableDefaultHealthCheckService(true);
-    ServerBuilder builder;
-    // Listen on the given address without any authentication mechanism.
-    builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-    // Register "service" as the instance through which we'll communicate with
-    // clients. In this case it corresponds to an *synchronous* service.
-    builder.RegisterService(&service);
-    // Finally assemble the server.
-    std::unique_ptr<Server> server(builder.BuildAndStart());
-    std::cout << "Server listening on " << server_address << std::endl;
-
-    // Wait for the server to shutdown. Note that some other thread must be
-    // responsible for shutting down the server for this call to ever return.
-    server->Wait();
 }
 
-int main(int argc, char** argv) {
-    RunServer();
+void printUsage(const char *programName)
+{
+    std::cout<<"Usage: "<<programName<<" [options]\n"
+        <<"\nOptions:\n"
+        <<"  --address <host:port>  Server listen address (default: 0.0.0.0:50051)\n"
+        <<"  --repository <path>   Path to repository to index on startup\n"
+        <<"  --model <name>        Model name for embeddings\n"
+        <<"  --help                Show this help message\n";
+}
+
+void runServer(const std::string &address, const std::string &repositoryPath,
+    const std::string &model)
+{
+    loreforge::Service service(repositoryPath, model);
+    grpc::ServerBuilder builder;
+
+    builder.AddListeningPort(address, grpc::InsecureServerCredentials());
+    builder.RegisterService(&service);
+
+    std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+
+    if(!server)
+    {
+        std::cerr<<"Failed to start server on "<<address<<std::endl;
+        return;
+    }
+
+    g_serverPtr=server.get();
+
+    std::cout<<"Loreforge gRPC server listening on "<<address<<std::endl;
+
+    if(!repositoryPath.empty())
+    {
+        std::cout<<"Default repository: "<<repositoryPath<<std::endl;
+    }
+
+    server->Wait();
+    g_serverPtr=nullptr;
+
+    std::cout<<"Server shut down gracefully."<<std::endl;
+}
+
+int main(int argc, char **argv)
+{
+    std::string address="0.0.0.0:50051";
+    std::string repositoryPath;
+    std::string model;
+
+    for(int i=1; i<argc; ++i)
+    {
+        std::string arg=argv[i];
+
+        if(arg=="--help")
+        {
+            printUsage(argv[0]);
+            return 0;
+        }
+        else if(arg=="--address"&&i+1<argc)
+        {
+            address=argv[++i];
+        }
+        else if(arg=="--repository"&&i+1<argc)
+        {
+            repositoryPath=argv[++i];
+        }
+        else if(arg=="--model"&&i+1<argc)
+        {
+            model=argv[++i];
+        }
+        else
+        {
+            std::cerr<<"Unknown option: "<<arg<<std::endl;
+            printUsage(argv[0]);
+            return 1;
+        }
+    }
+
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
+    runServer(address, repositoryPath, model);
     return 0;
 }

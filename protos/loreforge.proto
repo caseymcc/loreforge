@@ -9,6 +9,21 @@ service LoreForge {
 
   // Parses a file and returns its structure.
   rpc ParseFile (ParseFileRequest) returns (ParseFileResponse) {}
+
+  // Queries the codebase.
+  rpc QueryCodebase(QueryRequest) returns (stream QueryResponse);
+
+  // Indexes a repository.
+  rpc IndexRepository(IndexRepositoryRequest) returns (IndexRepositoryResponse);
+
+  // Analyzes a function signature.
+  rpc AnalyzeFunction(AnalyzeFunctionRequest) returns (AnalyzeFunctionResponse);
+
+  // Finds similar code chunks using semantic search.
+  rpc FindSimilarCode(FindSimilarCodeRequest) returns (FindSimilarCodeResponse);
+
+  // Retrieves call graph information for a function.
+  rpc GetCallGraph(GetCallGraphRequest) returns (GetCallGraphResponse);
 }
 
 // The request message for the HealthCheck RPC.
@@ -30,4 +45,104 @@ message ParseFileRequest {
 message ParseFileResponse {
   // This will be expanded later to include the parsed file structure.
   bool success = 1;
+}
+
+// The request message for the QueryCodebase RPC.
+message QueryRequest {
+  string query = 1;
+  string model = 2;
+  string codebase_name = 3;
+}
+
+// The response message for the QueryCodebase RPC.
+message QueryResponse {
+  string response_chunk = 1;
+}
+
+// The request message for the IndexRepository RPC.
+message IndexRepositoryRequest {
+  string repository_path = 1;
+  string model = 2;
+  string codebase_name = 3;
+}
+
+// The response message for the IndexRepository RPC.
+message IndexRepositoryResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// The request message for model downloads
+message ModelDownloadRequest {
+    string model_name = 1;
+    string provider = 2;
+    string download_url = 3;
+    string expected_hash = 4;
+    string destination_path = 5;
+}
+
+// The response message for model downloads
+message ModelDownloadResponse {
+    bool success = 1;
+    string message = 2;
+    string actual_hash = 3;
+    string file_path = 4;
+}
+
+// --- New Analysis Capabilities ---
+
+
+
+// AnalyzeFunction
+message AnalyzeFunctionRequest {
+    string file_path = 1;
+    string function_name = 2;
+}
+
+message AnalyzeFunctionResponse {
+    string signature = 1;
+    string return_type = 2;
+    repeated string parameters = 3;
+    bool found = 4;
+}
+
+// Represents a segment of code with metadata.
+message CodeChunkProto {
+  string file_path = 1;
+  int32 start_line = 2;
+  int32 end_line = 3;
+  string content = 4;
+  string function_name = 5; // Optional: associated function/class
+  float score = 6;
+}
+
+// FindSimilarCode
+message FindSimilarCodeRequest {
+  string query = 1;
+  string model = 2;
+  string codebase_name = 3; // Optional
+  int32 top_k = 4;
+}
+
+message FindSimilarCodeResponse {
+  repeated CodeChunkProto similar_chunks = 1;
+}
+
+// GetCallGraph
+message GetCallGraphRequest {
+    string file_path = 1;
+    string function_name = 2;
+    int32 depth = 3; // Optional depth limit
+}
+
+message CallGraphNode {
+    string function_name = 1;
+    string file_path = 2;
+    string signature = 3;
+    repeated CallGraphNode callees = 4;
+}
+
+message GetCallGraphResponse {
+    CallGraphNode root = 1;
+    bool found = 2;
 }

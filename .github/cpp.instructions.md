@@ -1,0 +1,39 @@
+---
+applyTo: "**/*.h,**/*.hpp,**/*.c,**/*.cpp"
+---
+- File Naming:
+  - `camelCase` for filenames.
+  - Use `.h`, `.cpp`, and `.inl` extensions.
+
+- Header Guards: `_PROJECT_FILENAME_EXT_` (no `#pragma once`).
+- Preprocessor Directives: `#ifdef`/`#endif` unindented; content indented. `//COMMENT` allowed after `#endif`.
+- Indentation: 4 spaces for namespaces, types, functions, control blocks, and constructor initializer lists.
+  Spacing:
+  - No space: `=`, `::`, `:`, unary `!`, dereference `*`, arithmetic `+/-`, between keyword/function and `()`.
+  - Space: comparison `!=`, `>=`, logical `&&`, `||`.
+  - Commas: after, not before.
+  - Semicolons: not before.
+  - No space between `keyword/function_name` and `(params)`.
+  - No space inside `()` or `<>` unless empty.
+- Braces:
+  - `{` for namespaces, functions, control blocks, truct/class definitions: new line.
+  - Empty inline constructors `{}`: same line.
+  - `}`: always on its own new line.
+- Blank Lines: Between methods; to separate logical blocks within methods.
+- Long Function Signatures: Wrap parameters to new lines, indent 1 level; `)` after last parameter.
+- Comments: Minimize. Use `//` for single-line; after statement is fine. Avoid for obvious code.
+- Naming Conventions:
+  - Types: `PascalCase`
+  - Functions/Methods: `camelCase`
+  - Class Members: `m_camelCase`
+  - Struct/Local Variables: `camelCase`
+  - Macros: `UPPER_CASE_UNDERSCORED`
+- `auto` Keyword: Use sparingly. Only when type is immediately obvious from initializer.
+- Namespaces:
+  - Avoid `using` directive.
+  - Prefer explicit qualification.
+  - Allow namespace aliases for brevity.
+- Variable Declarations: at top of scope/before control flow. new line after groups; control flow ends groups.
+- Constructor Initialization: `:` after `ctor()`.
+- Pointers/References: `type *var` / `type &var`.
+- Error Handling: Prefer error codes over `try/catch` if applicable.

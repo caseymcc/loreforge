@@ -23,7 +23,19 @@ RUN if [ -z "$UBUNTU_CODENAME" ]; then \
 
 # Install essential build tools and dependencies
 RUN apt-get update && \
-    apt-get install -y build-essential git cmake ninja-build curl zip unzip pkg-config gfortran
+    apt-get install -y \
+        build-essential \
+        git \
+        cmake \
+        ninja-build \
+        curl \
+        zip \
+        unzip \
+        pkg-config \
+        gfortran \
+        doxygen \
+        graphviz
+        
 #RUN apt-get install -y clang-12
 RUN apt-get install -y \
     clang-17 \
@@ -31,10 +43,12 @@ RUN apt-get install -y \
     clang-format-17 \
     llvm-17-dev \
     libclang-17-dev \
-    libomp-17-dev
+    libomp-17-dev \
+    lldb-17 
 
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-17 100 && \
-    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-17 100
+    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-17 100 &&\
+    update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-17 100
 
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++

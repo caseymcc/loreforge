@@ -37,7 +37,7 @@ start_server() {
     stop_server # Ensure no server is running before starting a new one
 
     BUILD_DIR="build/${OS}_${ARCH}_${BUILD_TYPE}"
-    SERVER_BINARY="${BUILD_DIR}/loreforge"
+    SERVER_BINARY="${BUILD_DIR}/grpc-server"
 
     if [ ! -f "$SERVER_BINARY" ]; then
         echo "Error: Server binary not found at $SERVER_BINARY"
